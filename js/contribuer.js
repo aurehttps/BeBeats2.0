@@ -335,13 +335,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const value = selectedCategory.value;
             postTypeInput.value = value;
 
-            // Afficher le champ titre d'artiste uniquement pour les évènements
+            // Afficher le champ titre d'artiste et les champs evenement uniquement pour les évènements
+            const eventExtraFields = document.getElementById('event-extra-fields');
             if (eventTitleInput) {
                 if (value === 'event') {
                     eventTitleInput.style.display = 'block';
                 } else {
                     eventTitleInput.style.display = 'none';
                     eventTitleInput.value = '';
+                }
+            }
+            if (eventExtraFields) {
+                if (value === 'event') {
+                    eventExtraFields.style.display = 'block';
+                } else {
+                    eventExtraFields.style.display = 'none';
+                    eventExtraFields.querySelectorAll('input, select').forEach(function(field) {
+                        field.value = '';
+                    });
                 }
             }
 

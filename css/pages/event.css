@@ -185,3 +185,217 @@ body.mode-orange .event-filters .filter-btn.filter-btn-active {
     color: var(--bebeats-accent);
     margin: 0 0 0.5rem;
 }
+
+.event-filter-group {
+    position: relative;
+}
+
+.filter-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    z-index: 50;
+    min-width: 240px;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--bebeats-border);
+    background: var(--bebeats-surface);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.filter-popover.is-open {
+    display: flex;
+}
+
+.filter-popover-label {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--bebeats-text-muted);
+}
+
+.filter-input {
+    width: 100%;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--bebeats-border);
+    background: var(--bebeats-surface-2);
+    color: var(--bebeats-text);
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.85rem;
+}
+
+.filter-clear-btn {
+    align-self: flex-start;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--bebeats-border);
+    background: transparent;
+    color: var(--bebeats-text-muted);
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.filter-clear-btn:hover {
+    border-color: var(--bebeats-accent);
+    color: var(--bebeats-accent);
+}
+
+.filter-price-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-range {
+    flex: 1;
+    accent-color: var(--bebeats-accent);
+}
+
+.filter-price-sep {
+    color: var(--bebeats-text-muted);
+    font-size: 0.8rem;
+}
+
+.filter-price-values {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bebeats-text);
+}
+
+.event-genre-item {
+    font-weight: 600;
+    color: var(--bebeats-accent);
+}
+
+.event-empty-hint {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.9rem;
+    color: var(--bebeats-text-muted);
+    padding: 2rem 0;
+}
+
+.event-detail-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.event-detail-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.event-detail-panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    border: 1px solid var(--bebeats-border);
+    background: var(--bebeats-surface);
+}
+
+.event-detail-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 2;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 1px solid var(--bebeats-border);
+    background: var(--bebeats-surface);
+    color: var(--bebeats-text);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.event-detail-image {
+    width: 100%;
+    min-height: 200px;
+    border-radius: 16px 16px 0 0;
+    overflow: hidden;
+    background: var(--bebeats-surface-2);
+}
+
+.event-detail-image img {
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+    display: block;
+}
+
+.event-detail-body {
+    padding: 1.5rem 2rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.event-detail-title {
+    font-family: 'Brevia', sans-serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    color: var(--bebeats-text);
+    margin: 0;
+}
+
+.event-detail-description {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--bebeats-text-muted);
+    margin: 0;
+}
+
+.event-detail-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+}
+
+.event-detail-calendar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    align-self: flex-start;
+    margin-top: 0.5rem;
+    padding: 0.6rem 1.4rem;
+    border-radius: 999px;
+    border: none;
+    background: var(--bebeats-accent);
+    color: #ffffff;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.event-detail-calendar-btn:hover {
+    opacity: 0.9;
+}
+
+.event-detail-calendar-btn svg {
+    width: 1rem;
+    height: 1rem;
+}

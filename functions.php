@@ -467,8 +467,21 @@ function bebeats_create_default_pages() {
     }
 
     flush_rewrite_rules();
+
+    // Marquer la creation comme faite pour ne pas repeter a chaque chargement
+    update_option('bebeats_pages_created', 1);
 }
 add_action('after_switch_theme', 'bebeats_create_default_pages');
+
+// Sur une installation ou BeBeats etait deja actif (pas de changement de theme
+// possible), creer les pages manquantes au premier chargement.
+function bebeats_maybe_create_default_pages() {
+    if (get_option('bebeats_pages_created')) {
+        return;
+    }
+    bebeats_create_default_pages();
+}
+add_action('init', 'bebeats_maybe_create_default_pages');
 
 add_action('after_switch_theme', 'bebeats_create_registration_table');
 add_action('after_switch_theme', 'bebeats_create_posts_table');

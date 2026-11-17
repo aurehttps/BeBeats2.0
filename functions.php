@@ -118,6 +118,10 @@ function bebeats_enqueue_scripts() {
         wp_enqueue_script('bebeats-time-update', get_template_directory_uri() . '/js/time-update.js', array(), '1.0', true);
     }
     
+    if (is_page('event')) {
+        wp_enqueue_script('bebeats-event', get_template_directory_uri() . '/js/event.js', array(), '1.0', true);
+    }
+
     if (is_page('recherche')) {
         wp_enqueue_script('bebeats-recherche', get_template_directory_uri() . '/js/profil.js', array('jquery'), '1.0', true);
         wp_localize_script('bebeats-recherche', 'bebeatsProfil', array(
@@ -1293,6 +1297,10 @@ function bebeats_create_posts_table() {
         'allow_repost' => "ALTER TABLE $table_name ADD COLUMN allow_repost tinyint(1) DEFAULT 1 AFTER allow_comments",
         'show_likes' => "ALTER TABLE $table_name ADD COLUMN show_likes tinyint(1) DEFAULT 1 AFTER allow_repost",
         'event_title' => "ALTER TABLE $table_name ADD COLUMN event_title varchar(255) NULL AFTER content",
+        'event_date' => "ALTER TABLE $table_name ADD COLUMN event_date date NULL AFTER event_title",
+        'event_location' => "ALTER TABLE $table_name ADD COLUMN event_location varchar(255) NULL AFTER event_date",
+        'event_price' => "ALTER TABLE $table_name ADD COLUMN event_price decimal(10,2) NULL AFTER event_location",
+        'event_genre' => "ALTER TABLE $table_name ADD COLUMN event_genre varchar(100) NULL AFTER event_price",
         'tagged_users' => "ALTER TABLE $table_name ADD COLUMN tagged_users varchar(500) NULL AFTER show_likes"
     );
     
@@ -2023,11 +2031,30 @@ function bebeats_handle_create_post() {
     // Récupérer le contenu selon le type de post
     $content = '';
     $event_title = '';
+    $event_date = '';
+    $event_location = '';
+    $event_price = '';
+    $event_genre = '';
     if ($post_type === 'post' || $post_type === 'event') {
         $content = isset($_POST['content']) ? sanitize_textarea_field($_POST['content']) : '';
         // Pour les évènements, on peut avoir un titre d'artiste dédié
         if ($post_type === 'event') {
             $event_title = isset($_POST['event_title']) ? sanitize_text_field($_POST['event_title']) : '';
+
+            $raw_date = isset($_POST['event_date']) ? sanitize_text_field($_POST['event_date']) : '';
+            $parsed = date_parse($raw_date);
+            if (!empty($raw_date) && $parsed['error_count'] === 0 && checkdate($parsed['month'], $parsed['day'], $parsed['year'])) {
+                $event_date = sprintf('%04d-%02d-%02d', $parsed['year'], $parsed['month'], $parsed['day']);
+            }
+
+            $event_location = isset($_POST['event_location']) ? sanitize_text_field($_POST['event_location']) : '';
+
+            $raw_price = isset($_POST['event_price']) ? str_replace(',', '.', sanitize_text_field($_POST['event_price'])) : '';
+            if ($raw_price !== '' && is_numeric($raw_price)) {
+                $event_price = max(0, (float) $raw_price);
+            }
+
+            $event_genre = isset($_POST['event_genre']) ? sanitize_text_field($_POST['event_genre']) : '';
         }
     } elseif ($post_type === 'fan-art') {
         // Pour fan-art, le contenu peut venir de 'content' (description)
@@ -2119,6 +2146,26 @@ function bebeats_handle_create_post() {
     // Enregistrer le titre d'évènement séparément si fourni
     if (!empty($event_title)) {
         $insert_data['event_title'] = $event_title;
+        $insert_formats[] = '%s';
+    }
+
+    if (!empty($event_date)) {
+        $insert_data['event_date'] = $event_date;
+        $insert_formats[] = '%s';
+    }
+
+    if (!empty($event_location)) {
+        $insert_data['event_location'] = $event_location;
+        $insert_formats[] = '%s';
+    }
+
+    if ($event_price !== '') {
+        $insert_data['event_price'] = $event_price;
+        $insert_formats[] = '%f';
+    }
+
+    if (!empty($event_genre)) {
+        $insert_data['event_genre'] = $event_genre;
         $insert_formats[] = '%s';
     }
     

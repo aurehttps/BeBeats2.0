@@ -233,6 +233,53 @@ if (is_user_logged_in()) {
                                     placeholder="Nom de l’artiste (titre de l’évènement)"
                                     style="display: none; margin-bottom: 0.75rem;"
                                 />
+                                <div id="event-extra-fields" class="event-extra-fields" style="display: none;">
+                                    <label class="event-field-label" for="event-date-input">Date de l’événement</label>
+                                    <input 
+                                        type="date"
+                                        name="event_date"
+                                        id="event-date-input"
+                                        class="post-content-textarea event-field-input"
+                                    />
+                                    <label class="event-field-label" for="event-location-input">Lieu</label>
+                                    <input 
+                                        type="text"
+                                        name="event_location"
+                                        id="event-location-input"
+                                        class="post-content-textarea event-field-input"
+                                        placeholder="Ex : Bruxelles, Ancienne Belgique..."
+                                    />
+                                    <label class="event-field-label" for="event-price-input">Prix (€) — laisse vide si gratuit</label>
+                                    <input 
+                                        type="number"
+                                        name="event_price"
+                                        id="event-price-input"
+                                        class="post-content-textarea event-field-input"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0"
+                                    />
+                                    <label class="event-field-label" for="event-genre-input">Type de musique</label>
+                                    <select 
+                                        name="event_genre"
+                                        id="event-genre-input"
+                                        class="post-content-textarea event-field-input"
+                                    >
+                                        <option value="">— Choisir —</option>
+                                        <option value="Pop">Pop</option>
+                                        <option value="Rock">Rock</option>
+                                        <option value="Hip-hop">Hip-hop</option>
+                                        <option value="Rap">Rap</option>
+                                        <option value="Electro">Electro</option>
+                                        <option value="Jazz">Jazz</option>
+                                        <option value="Classique">Classique</option>
+                                        <option value="Folk">Folk</option>
+                                        <option value="Metal">Metal</option>
+                                        <option value="Reggae">Reggae</option>
+                                        <option value="R&B">R&B</option>
+                                        <option value="Autre">Autre</option>
+                                    </select>
+                                </div>
                                 <textarea 
                                     name="content" 
                                     id="post-content"

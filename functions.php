@@ -101,6 +101,7 @@ function bebeats_enqueue_scripts() {
     
     if (is_page('reglages')) {
         wp_enqueue_script('bebeats-file-preview', get_template_directory_uri() . '/js/file-preview.js', array(), '1.0', true);
+        wp_enqueue_script('bebeats-account', get_template_directory_uri() . '/js/account.js', array(), '1.0', true);
     }
     
     if (is_page('feed-page')) {

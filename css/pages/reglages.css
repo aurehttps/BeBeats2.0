@@ -412,3 +412,129 @@ body.mode-orange .logout-btn:hover {
     border-color: var(--bebeats-accent);
     outline: none;
 }
+
+/* Bouton "Informations de connexion" (repliable) */
+.account-info-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    margin-bottom: 1rem;
+    background: var(--bebeats-surface-2);
+    border: 1px solid var(--bebeats-border);
+    border-radius: 12px;
+    color: var(--bebeats-text);
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.account-info-toggle:hover {
+    border-color: var(--bebeats-accent);
+}
+
+.account-info-chevron {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.3s ease;
+}
+
+.account-info-toggle.is-open .account-info-chevron {
+    transform: rotate(180deg);
+}
+
+/* Panneau d'informations de connexion */
+.account-info-panel {
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    background: var(--bebeats-surface-2);
+    border: 1px solid var(--bebeats-border);
+    border-radius: 12px;
+}
+
+.account-info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.account-info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.account-info-label {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    color: var(--bebeats-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.account-info-value {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.95rem;
+    color: var(--bebeats-text);
+}
+
+.account-info-password {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.account-password-dots {
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    color: var(--bebeats-text);
+}
+
+.account-password-hint {
+    font-size: 0.7rem;
+    color: var(--bebeats-text-muted);
+}
+
+/* Champs mot de passe avec bouton oeil */
+.account-password-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.account-password-field .account-input {
+    width: 100%;
+    padding-right: 3rem;
+}
+
+.password-eye-btn {
+    position: absolute;
+    right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    color: var(--bebeats-text-muted);
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.password-eye-btn:hover {
+    color: var(--bebeats-text);
+}
+
+.password-eye-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.password-eye-btn.is-visible {
+    color: var(--bebeats-accent);
+}

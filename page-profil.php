@@ -153,6 +153,39 @@ if (!empty($genres) && is_array($genres)) {
         <!-- Contenu principal -->
         <div class="profile-main">
 
+            <?php
+            // Badges epingles (max 5), affiches entre la banniere et les publications
+            $viewed_badges = bebeats_get_user_badges($viewed_user_id);
+            $viewed_pinned_badges = array();
+            foreach ($viewed_badges as $viewed_badge_key => $viewed_badge) {
+                if ($viewed_badge['pinned']) {
+                    $viewed_pinned_badges[$viewed_badge_key] = $viewed_badge;
+                }
+            }
+            if (!empty($viewed_pinned_badges)):
+                $badge_icons = array(
+                    'footsteps' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5-5m-4.5 2L15 2m-8 8l-3 3a1.5 1.5 0 003 3l3-3M9 10l-3 3a1.5 1.5 0 003 3l3-3m-1-9l2-2m-4 4l2-2"></path>',
+                    'megaphone' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 11l12-6v14l-12-6v-2zm12 2h3a2 2 0 002-2v-2a2 2 0 00-2-2h-3M7 14v5a1 1 0 001 1h2a1 1 0 001-1v-4"></path>',
+                    'chat' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>',
+                    'heart' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>',
+                    'star' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.539 1.118l-3.975-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.98 9.101c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.518-4.674z"></path>',
+                    'trophy' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 21h8m-4-4v4M7 4h10v6a5 5 0 01-10 0V4z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 6H5a2 2 0 00-2 2c0 1.5 1 3 3.5 3.5M17 6h2a2 2 0 012 2c0 1.5-1 3-3.5 3.5"></path>'
+                );
+            ?>
+                <div class="profile-pinned-badges glassmorphism">
+                    <?php foreach ($viewed_pinned_badges as $viewed_badge_key => $viewed_badge): ?>
+                        <span class="profile-pinned-badge">
+                            <span class="profile-pinned-badge-icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <?php echo $badge_icons[$viewed_badge['icon']]; ?>
+                                </svg>
+                            </span>
+                            <span class="profile-pinned-badge-name"><?php echo esc_html($viewed_badge['title']); ?></span>
+                        </span>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Grille unifiee des publications (tous types, ordre chronologique) -->
             <?php
             // Recuperer TOUS les posts de l'utilisateur, tous types confondus

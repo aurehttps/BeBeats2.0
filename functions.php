@@ -1113,6 +1113,120 @@ function bebeats_ajax_select_badge() {
 }
 add_action('wp_ajax_bebeats_select_badge', 'bebeats_ajax_select_badge');
 
+/**
+ * Catalogue des badges (succes bases sur l'activite, distincts des titres)
+ */
+function bebeats_get_badge_catalog() {
+    return array(
+        'premier_pas' => array(
+            'title' => 'Premier pas',
+            'description' => 'Publier son premier contenu',
+            'icon' => 'footsteps',
+            'condition' => array('type' => 'posts', 'value' => 1)
+        ),
+        'voix_du_peuple' => array(
+            'title' => 'Voix du peuple',
+            'description' => 'Publier 5 contenus',
+            'icon' => 'megaphone',
+            'condition' => array('type' => 'posts', 'value' => 5)
+        ),
+        'commentateur' => array(
+            'title' => 'Commentateur',
+            'description' => 'Ecrire 10 commentaires',
+            'icon' => 'chat',
+            'condition' => array('type' => 'comments', 'value' => 10)
+        ),
+        'soutien_fidele' => array(
+            'title' => 'Soutien fidele',
+            'description' => 'Suivre 3 artistes',
+            'icon' => 'heart',
+            'condition' => array('type' => 'following', 'value' => 3)
+        ),
+        'super_fan_badge' => array(
+            'title' => 'Super Fan',
+            'description' => 'Atteindre 100 points',
+            'icon' => 'star',
+            'condition' => array('type' => 'points', 'value' => 100)
+        ),
+        'veteran_badge' => array(
+            'title' => 'Veteran BeBeats',
+            'description' => 'Atteindre 500 points',
+            'icon' => 'trophy',
+            'condition' => array('type' => 'points', 'value' => 500)
+        )
+    );
+}
+
+/**
+ * Etat des badges d'un utilisateur : debloque ou non + epingle ou non
+ */
+function bebeats_get_user_badges($user_id) {
+    $activity = bebeats_get_user_activity($user_id);
+    $catalog = bebeats_get_badge_catalog();
+    $pinned = get_user_meta($user_id, 'bebeats_pinned_badges', true);
+    $pinned = is_array($pinned) ? $pinned : array();
+    
+    $badges = array();
+    foreach ($catalog as $key => $badge) {
+        $current = isset($activity[$badge['condition']['type']]) ? $activity[$badge['condition']['type']] : 0;
+        $target = (int) $badge['condition']['value'];
+        
+        $badges[$key] = array(
+            'title' => $badge['title'],
+            'description' => $badge['description'],
+            'icon' => $badge['icon'],
+            'current' => $current,
+            'target' => $target,
+            'unlocked' => $current >= $target,
+            'pinned' => in_array($key, $pinned)
+        );
+    }
+    
+    return $badges;
+}
+
+/**
+ * Epingler / desepingler un badge (AJAX, max 5 epingles)
+ */
+function bebeats_ajax_toggle_badge_pin() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Connexion requise'));
+    }
+    
+    check_ajax_referer('bebeats_badge_action', 'nonce');
+    
+    $badge_key = isset($_POST['badge']) ? sanitize_key($_POST['badge']) : '';
+    $user_id = get_current_user_id();
+    
+    if (empty($badge_key)) {
+        wp_send_json_error(array('message' => 'Requete invalide'));
+    }
+    
+    $badges = bebeats_get_user_badges($user_id);
+    if (!isset($badges[$badge_key]) || !$badges[$badge_key]['unlocked']) {
+        wp_send_json_error(array('message' => 'Badge non debloque'));
+    }
+    
+    $pinned = get_user_meta($user_id, 'bebeats_pinned_badges', true);
+    $pinned = is_array($pinned) ? $pinned : array();
+    
+    if (in_array($badge_key, $pinned)) {
+        $pinned = array_diff($pinned, array($badge_key));
+        $is_pinned = false;
+    } else {
+        if (count($pinned) >= 5) {
+            wp_send_json_error(array('message' => 'Maximum 5 badges epingles'));
+        }
+        $pinned[] = $badge_key;
+        $is_pinned = true;
+    }
+    
+    update_user_meta($user_id, 'bebeats_pinned_badges', array_values($pinned));
+    
+    wp_send_json_success(array('pinned' => $is_pinned, 'pinned_count' => count($pinned)));
+}
+add_action('wp_ajax_bebeats_toggle_badge_pin', 'bebeats_ajax_toggle_badge_pin');
+
 add_action('after_switch_theme', 'bebeats_create_registration_table');
 add_action('after_switch_theme', 'bebeats_create_posts_table');
 add_action('after_switch_theme', 'bebeats_create_post_reactions_table');

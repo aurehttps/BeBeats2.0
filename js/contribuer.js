@@ -1,5 +1,4 @@
 // Gestion de la page Contribuer
-console.log('Script contribuer.js chargé');
 
 // Variables globales pour les utilisateurs identifiés
 let taggedUsers = [];
@@ -39,12 +38,10 @@ function updateTaggedUsersDisplay() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded - Initialisation de la page Contribuer');
     
     // Faire disparaître automatiquement le message de succès après 5 secondes
     const successMessage = document.querySelector('.contribuer-success-message');
     if (successMessage) {
-        console.log('Message de succès trouvé, affichage...');
         
         // S'assurer que le message est visible
         successMessage.style.display = 'flex';
@@ -86,24 +83,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 500);
         }, 5000);
     } else {
-        console.log('Aucun message de succès trouvé');
     }
     
     const mediaInput = document.getElementById('media-input');
     const contribuerForm = document.getElementById('contribuer-form');
     const mediaPreview = document.getElementById('media-preview');
     
-    console.log('Éléments trouvés:', {
-        mediaInput: !!mediaInput,
-        contribuerForm: !!contribuerForm,
-        mediaPreview: !!mediaPreview
-    });
     
     // Vérifier aussi le textarea
     const postContentCheck = document.getElementById('post-content');
-    console.log('Textarea post-content trouvé:', !!postContentCheck);
     if (postContentCheck) {
-        console.log('Textarea value au chargement:', postContentCheck.value);
     }
     
     // Réinitialiser les utilisateurs identifiés au chargement
@@ -115,28 +104,23 @@ document.addEventListener('DOMContentLoaded', function() {
         mediaInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                console.log('Fichier sélectionné:', file.name, file.type);
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    console.log('FileReader onload déclenché');
                     
                     // Supprimer le placeholder
                     const placeholder = mediaPreview.querySelector('.media-placeholder');
                     if (placeholder) {
                         placeholder.remove();
-                        console.log('Placeholder supprimé');
                     }
                     
                     // Vider la zone (au cas où il y aurait déjà du contenu)
                     const existingMedia = mediaPreview.querySelector('img, video');
                     if (existingMedia) {
                         existingMedia.remove();
-                        console.log('Média existant supprimé');
                     }
                     
                     // Ajouter une classe pour indiquer qu'un média est présent
                     mediaPreview.classList.add('has-media');
-                    console.log('Classe has-media ajoutée');
                     
                     if (file.type.startsWith('image/')) {
                         const img = document.createElement('img');
@@ -147,10 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         img.style.visibility = 'visible';
                         img.style.opacity = '1';
                         mediaPreview.appendChild(img);
-                        console.log('Image ajoutée à l\'aperçu:', img.src.substring(0, 50) + '...');
-                        console.log('Media preview classes:', mediaPreview.className);
-                        console.log('Media preview display:', window.getComputedStyle(mediaPreview).display);
-                        console.log('Image display:', window.getComputedStyle(img).display);
                     } else if (file.type.startsWith('video/')) {
                         const video = document.createElement('video');
                         video.src = e.target.result;
@@ -160,7 +140,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         video.style.visibility = 'visible';
                         video.style.opacity = '1';
                         mediaPreview.appendChild(video);
-                        console.log('Vidéo ajoutée à l\'aperçu');
                     }
                 };
                 reader.onerror = function(error) {
@@ -168,7 +147,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 reader.readAsDataURL(file);
             } else {
-                console.log('Aucun fichier sélectionné');
                 // Si aucun fichier, réinitialiser l'aperçu
                 const existingMedia = mediaPreview.querySelector('img, video');
                 if (existingMedia) {
@@ -348,7 +326,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedCategory && postTypeInput) {
             const value = selectedCategory.value;
             postTypeInput.value = value;
-            console.log('Catégorie mise à jour:', value);
 
             // Afficher le champ titre d'artiste uniquement pour les évènements
             if (eventTitleInput) {
@@ -479,21 +456,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (toggleComments && allowCommentsInput) {
         toggleComments.addEventListener('change', function() {
             allowCommentsInput.value = this.checked ? '1' : '0';
-            console.log('Commentaires:', this.checked ? 'activés' : 'désactivés');
         });
     }
     
     if (toggleRepost && allowRepostInput) {
         toggleRepost.addEventListener('change', function() {
             allowRepostInput.value = this.checked ? '1' : '0';
-            console.log('Republication:', this.checked ? 'activée' : 'désactivée');
         });
     }
     
     if (toggleLikes && showLikesInput) {
         toggleLikes.addEventListener('change', function() {
             showLikesInput.value = this.checked ? '1' : '0';
-            console.log('Affichage des likes:', this.checked ? 'activé' : 'désactivé');
         });
     }
     
@@ -519,22 +493,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // S'assurer que le bouton "Publier" soumet bien le formulaire
     const publishBtn = document.querySelector('.menu-item-publish[type="submit"]');
-    console.log('Bouton Publier trouvé:', !!publishBtn);
-    console.log('Formulaire trouvé:', !!contribuerForm);
     
     // Ajouter aussi un écouteur sur le bouton pour forcer la synchronisation des options
     // Utiliser plusieurs méthodes pour s'assurer que le clic est capturé
     if (publishBtn) {
         // Méthode 1: Écouteur avec capture (phase de capture)
         publishBtn.addEventListener('click', function(e) {
-            console.log('=== CLIC SUR BOUTON PUBLIER (CAPTURE) ===');
             // Synchroniser les options
             syncOptions();
         }, true);
         
         // Méthode 2: Écouteur normal (phase de bubbling)
         publishBtn.addEventListener('click', function(e) {
-            console.log('=== CLIC SUR BOUTON PUBLIER (BUBBLING) ===');
             // Synchroniser les options
             syncOptions();
         }, false);
@@ -549,7 +519,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const toggleComments = document.getElementById('toggle-comments');
                 if (toggleComments) {
                     allowCommentsInput.value = toggleComments.checked ? '1' : '0';
-                    console.log('Comments synchronisé:', allowCommentsInput.value);
                 }
             }
             
@@ -557,7 +526,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const toggleRepost = document.getElementById('toggle-repost');
                 if (toggleRepost) {
                     allowRepostInput.value = toggleRepost.checked ? '1' : '0';
-                    console.log('Repost synchronisé:', allowRepostInput.value);
                 }
             }
             
@@ -565,7 +533,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const toggleLikes = document.getElementById('toggle-likes');
                 if (toggleLikes) {
                     showLikesInput.value = toggleLikes.checked ? '1' : '0';
-                    console.log('Likes synchronisé:', showLikesInput.value);
                 }
             }
         }
@@ -573,21 +540,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Gestion de la soumission du formulaire
     if (contribuerForm) {
-        console.log('Ajout de l\'écouteur d\'événement submit sur le formulaire');
         
         // Ajouter l'écouteur en phase de capture ET en phase de bubbling
         contribuerForm.addEventListener('submit', function(e) {
-            console.log('=== ÉVÉNEMENT SUBMIT DÉCLENCHÉ (CAPTURE) ===');
             handleFormSubmit(e);
         }, true);
         
         contribuerForm.addEventListener('submit', function(e) {
-            console.log('=== ÉVÉNEMENT SUBMIT DÉCLENCHÉ (BUBBLING) ===');
             handleFormSubmit(e);
         }, false);
         
         function handleFormSubmit(e) {
-            console.log('=== TRAITEMENT DE LA SOUMISSION ===');
             
             const postContent = document.getElementById('post-content');
             const content = postContent ? postContent.value : '';
@@ -595,25 +558,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Vérifier qu'il y a du contenu ou un média
             const hasMedia = mediaInput && mediaInput.files && mediaInput.files.length > 0;
             
-            console.log('=== DEBUG VALIDATION ===');
-            console.log('postContent élément:', postContent);
-            console.log('postContent.value:', content);
-            console.log('content.length:', content ? content.length : 0);
-            console.log('mediaInput:', mediaInput);
-            console.log('mediaInput.files:', mediaInput ? mediaInput.files : 'N/A');
-            console.log('mediaInput.files.length:', mediaInput && mediaInput.files ? mediaInput.files.length : 0);
-            console.log('hasMedia:', hasMedia);
-            console.log('Validation:', { contentLength: content ? content.length : 0, hasMedia });
             
             if (!content.trim() && !hasMedia) {
-                console.log('ERREUR: Pas de contenu ni de média');
                 e.preventDefault();
                 e.stopPropagation();
                 alert('Veuillez ajouter du contenu ou un média.');
                 return false;
             }
             
-            console.log('✅ Validation réussie, soumission du formulaire...');
             
             // S'assurer que les champs cachés sont bien remplis
             const allowCommentsInput = document.getElementById('allow-comments-input');
@@ -641,32 +593,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            console.log('=== DONNÉES DU FORMULAIRE ===');
-            console.log('Contenu:', content.substring(0, 50) + '...');
-            console.log('Média:', hasMedia ? mediaInput.files[0].name : 'Aucun');
-            console.log('Options:', {
-                comments: allowCommentsInput ? allowCommentsInput.value : 'N/A',
-                repost: allowRepostInput ? allowRepostInput.value : 'N/A',
-                likes: showLikesInput ? showLikesInput.value : 'N/A'
-            });
-            console.log('Action du formulaire:', contribuerForm.action);
-            console.log('Méthode:', contribuerForm.method);
             
             // Vérifier que le nonce est présent
             const nonceInput = contribuerForm.querySelector('input[name="bebeats_create_post_nonce"]');
-            console.log('Nonce présent:', !!nonceInput);
             if (nonceInput) {
-                console.log('Valeur du nonce:', nonceInput.value ? nonceInput.value.substring(0, 10) + '...' : 'VIDE');
             }
             
             // Vérifier tous les champs cachés
             const allHiddenInputs = contribuerForm.querySelectorAll('input[type="hidden"]');
-            console.log('Champs cachés trouvés:', allHiddenInputs.length);
             allHiddenInputs.forEach(input => {
-                console.log(`  - ${input.name}: ${input.value ? input.value.substring(0, 20) + '...' : 'VIDE'}`);
             });
             
-            console.log('=== SOUMISSION DU FORMULAIRE EN COURS ===');
             
             // Ne pas empêcher la soumission si tout est OK
             // Le formulaire va se soumettre normalement
@@ -676,9 +613,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Vérification finale
-    console.log('=== INITIALISATION TERMINÉE ===');
-    console.log('Formulaire:', contribuerForm ? 'Trouvé' : 'Non trouvé');
-    console.log('Bouton Publier:', publishBtn ? 'Trouvé' : 'Non trouvé');
     
 });
 

@@ -97,20 +97,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function handleToggleChange(toggleId, isChecked) {
     switch(toggleId) {
         case 'toggle-cookies':
-            console.log('Cookies:', isChecked ? 'activé' : 'désactivé');
             // Ajouter ici la logique spécifique pour les cookies
             break;
         case 'toggle-langues':
-            console.log('Langues:', isChecked ? 'activé' : 'désactivé');
             // Ajouter ici la logique spécifique pour les langues
             break;
         case 'toggle-mode':
-            console.log('Mode:', isChecked ? 'orange' : 'violet');
             // Changer le mode de couleur des boutons
             applyColorMode(isChecked);
             break;
         case 'toggle-repost':
-            console.log('Repost:', isChecked ? 'activé' : 'désactivé');
             // Ajouter ici la logique spécifique pour le repost
             break;
     }

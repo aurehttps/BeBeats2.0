@@ -31,11 +31,9 @@ $current_user_id = is_user_logged_in() ? get_current_user_id() : 0;
         
         // Debug : vérifier si la table existe et contient des posts
         $posts_count = $wpdb->get_var("SELECT COUNT(*) FROM $posts_table");
-        error_log('bebeats_feed_page: Nombre de posts dans la table: ' . $posts_count);
         
         // Vérifier s'il y a une erreur SQL
         if ($wpdb->last_error) {
-            error_log('bebeats_feed_page: Erreur SQL: ' . $wpdb->last_error);
         }
         
         // Récupérer tous les posts avec les infos utilisateur
@@ -54,16 +52,10 @@ $current_user_id = is_user_logged_in() ? get_current_user_id() : 0;
         
         // Vérifier s'il y a une erreur SQL après la requête
         if ($wpdb->last_error) {
-            error_log('bebeats_feed_page: Erreur SQL après requête: ' . $wpdb->last_error);
         }
         
-        error_log('bebeats_feed_page: Nombre de posts récupérés: ' . count($posts));
         if (!empty($posts)) {
-            error_log('bebeats_feed_page: Premier post ID: ' . $posts[0]->id);
-            error_log('bebeats_feed_page: Premier post User ID: ' . $posts[0]->user_id);
-            error_log('bebeats_feed_page: Premier post Content: ' . (!empty($posts[0]->content) ? substr($posts[0]->content, 0, 30) . '...' : 'VIDE'));
         } else {
-            error_log('bebeats_feed_page: ⚠️ Aucun post trouvé dans la base de données');
         }
         
         if (empty($posts)): ?>

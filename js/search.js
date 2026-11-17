@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsUrl += separator + 'q=' + encodeURIComponent(trimmedTerm);
         }
         
-        console.log('Redirection vers:', resultsUrl);
         
         // Rediriger vers la page de résultats
         window.location.href = resultsUrl;
@@ -35,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    console.log('Formulaires de recherche trouvés:', searchForms.length);
     
     searchForms.forEach(function(form) {
         // Écouter la soumission du formulaire

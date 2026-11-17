@@ -79,10 +79,7 @@ if (!empty($genres) && is_array($genres)) {
             ));
             
             // Debug
-            error_log('bebeats_profil_page: User ID: ' . $current_user->ID);
-            error_log('bebeats_profil_page: Nombre de posts récupérés: ' . count($user_posts));
             if (!empty($user_posts)) {
-                error_log('bebeats_profil_page: Premier post ID: ' . $user_posts[0]->id);
             }
             
             if (!empty($user_posts)): ?>

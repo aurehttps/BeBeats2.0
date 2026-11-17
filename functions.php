@@ -154,20 +154,6 @@ function bebeats_disable_feed_redirect() {
 add_action('parse_request', 'bebeats_disable_feed_redirect', 1);
 add_action('parse_query', 'bebeats_disable_feed_redirect', 1);
 
-// Donner les permissions de publication à tous les utilisateurs lors de leur connexion
-function bebeats_grant_post_permissions_on_login($user_login, $user) {
-    if ($user && isset($user->ID)) {
-        $user_obj = get_userdata($user->ID);
-        if ($user_obj) {
-            $user_obj->add_cap('publish_posts');
-            $user_obj->add_cap('edit_posts');
-            $user_obj->add_cap('edit_published_posts');
-            $user_obj->add_cap('delete_posts');
-        }
-    }
-}
-add_action('wp_login', 'bebeats_grant_post_permissions_on_login', 10, 2);
-
 // Hook into WordPress
 add_action('wp_enqueue_scripts', 'bebeats_enqueue_styles');
 add_action('wp_enqueue_scripts', 'bebeats_enqueue_scripts');
@@ -187,6 +173,71 @@ function bebeats_setup() {
     ));
 }
 add_action('after_setup_theme', 'bebeats_setup');
+
+/**
+ * Listes blanches de types MIME autorises pour les uploads
+ */
+function bebeats_allowed_image_mimes() {
+    return array(
+        'jpg|jpeg|jpe' => 'image/jpeg',
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp'
+    );
+}
+
+function bebeats_allowed_audio_mimes() {
+    return array(
+        'mp3|m4a|m4b' => 'audio/mpeg',
+        'mp4|m4a' => 'audio/mp4',
+        'wav' => 'audio/wav',
+        'ogg|oga' => 'audio/ogg'
+    );
+}
+
+function bebeats_allowed_media_mimes() {
+    return array_merge(
+        bebeats_allowed_image_mimes(),
+        array(
+            'mp4|m4v' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov|qt' => 'video/quicktime'
+        )
+    );
+}
+
+/**
+ * Upload valide : verifie l'extension, le type MIME reel et la taille
+ * avant de deplacer le fichier. Retourne le resultat de wp_handle_upload
+ * ou null en cas de rejet.
+ */
+function bebeats_handle_validated_upload($file, $allowed_mimes, $max_size = 20971520) {
+    if (empty($file['name'])) {
+        return null;
+    }
+
+    if (!empty($file['size']) && $file['size'] > $max_size) {
+        return null;
+    }
+
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+
+    $check = wp_check_filetype_and_ext($file['tmp_name'], $file['name'], $allowed_mimes);
+    if (empty($check['ext']) || empty($check['type'])) {
+        return null;
+    }
+
+    $upload = wp_handle_upload($file, array(
+        'test_form' => false,
+        'mimes' => $allowed_mimes
+    ));
+
+    if (isset($upload['error'])) {
+        return null;
+    }
+
+    return $upload;
+}
 
 /**
  * Traitement du formulaire de connexion
@@ -218,15 +269,6 @@ function bebeats_handle_login() {
         exit;
     } else {
         // Connexion réussie
-        // Donner les permissions nécessaires pour créer des posts
-        $user_obj = get_userdata($user->ID);
-        if ($user_obj) {
-            $user_obj->add_cap('publish_posts');
-            $user_obj->add_cap('edit_posts');
-            $user_obj->add_cap('edit_published_posts');
-            $user_obj->add_cap('delete_posts');
-        }
-        
         wp_clear_auth_cookie();
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, true); // true pour "remember me"
@@ -448,9 +490,8 @@ function bebeats_handle_register_fan_step1() {
     // Créer la table si elle n'existe pas
     bebeats_create_registration_table();
     
-    // Stocker le mot de passe de manière sécurisée (base64 pour éviter les problèmes de caractères spéciaux)
-    // Note: Ceci est temporaire et sera supprimé après création du compte
-    $password_encoded = base64_encode($password);
+    // Stocker le mot de passe haché (jamais en clair ni réversible)
+    $password_encoded = wp_hash_password($password);
     
     $result = $wpdb->insert(
         $table_name,
@@ -574,12 +615,8 @@ function bebeats_handle_register_fan_step3() {
     // Gérer l'upload de la photo de profil
     $profile_photo = '';
     if (!empty($_FILES['profile_photo']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['profile_photo'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['profile_photo'], bebeats_allowed_image_mimes());
+        if ($upload !== null) {
             $profile_photo = $upload['url'];
         }
     }
@@ -587,12 +624,8 @@ function bebeats_handle_register_fan_step3() {
     // Gérer l'upload de la bannière
     $banner = '';
     if (!empty($_FILES['banner']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['banner'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['banner'], bebeats_allowed_image_mimes());
+        if ($upload !== null) {
             $banner = $upload['url'];
         }
     }
@@ -635,24 +668,29 @@ function bebeats_handle_register_fan_step3() {
     ));
     
     if ($registration) {
-        // Décoder le mot de passe
-        $password = base64_decode($registration->password_hash);
-        
-        // Créer l'utilisateur WordPress
+        // Créer l'utilisateur WordPress avec un mot de passe aléatoire,
+        // puis appliquer directement le hash stocké (le mot de passe clair n'existe plus)
         $user_id = wp_create_user(
             $registration->username,
-            $password,
+            wp_generate_password(32),
             $registration->email
         );
         
         if (!is_wp_error($user_id)) {
-            // Donner les permissions nécessaires pour créer des posts
+            global $wpdb;
+            $wpdb->update(
+                $wpdb->users,
+                array('user_pass' => $registration->password_hash),
+                array('ID' => $user_id),
+                array('%s'),
+                array('%d')
+            );
+            clean_user_cache($user_id);
+            
+            // Rôle auteur : permet la publication de posts (fan et artiste)
             $user_obj = get_userdata($user_id);
             if ($user_obj) {
-                $user_obj->add_cap('publish_posts');
-                $user_obj->add_cap('edit_posts');
-                $user_obj->add_cap('edit_published_posts');
-                $user_obj->add_cap('delete_posts');
+                $user_obj->set_role('author');
             }
             
             // Mettre à jour les meta utilisateur
@@ -672,14 +710,8 @@ function bebeats_handle_register_fan_step3() {
             wp_set_current_user($user_id);
             wp_set_auth_cookie($user_id);
             
-            // Marquer l'inscription comme complétée
-            $wpdb->update(
-                $table_name,
-                array('step_completed' => 4),
-                array('registration_key' => $registration_key),
-                array('%d'),
-                array('%s')
-            );
+            // Supprimer la ligne d'inscription (contient encore le hash temporaire)
+            $wpdb->delete($table_name, array('registration_key' => $registration_key), array('%s'));
             
             // Supprimer le cookie
             setcookie('bebeats_registration_key', '', time() - 3600, '/');
@@ -742,8 +774,8 @@ function bebeats_handle_register_artiste_step1() {
     // Créer la table si elle n'existe pas
     bebeats_create_registration_table();
     
-    // Stocker le mot de passe de manière sécurisée (base64 pour éviter les problèmes de caractères spéciaux)
-    $password_encoded = base64_encode($password);
+    // Stocker le mot de passe haché (jamais en clair ni réversible)
+    $password_encoded = wp_hash_password($password);
     
     $result = $wpdb->insert(
         $table_name,
@@ -867,12 +899,8 @@ function bebeats_handle_register_artiste_step3() {
     // Gérer l'upload de la photo de profil
     $profile_photo = '';
     if (!empty($_FILES['profile_photo']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['profile_photo'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['profile_photo'], bebeats_allowed_image_mimes());
+        if ($upload !== null) {
             $profile_photo = $upload['url'];
         }
     }
@@ -880,12 +908,8 @@ function bebeats_handle_register_artiste_step3() {
     // Gérer l'upload de la bannière
     $banner = '';
     if (!empty($_FILES['banner']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['banner'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['banner'], bebeats_allowed_image_mimes());
+        if ($upload !== null) {
             $banner = $upload['url'];
         }
     }
@@ -970,8 +994,8 @@ function bebeats_handle_register_artiste_step4() {
                     'size' => $_FILES['sounds']['size'][$key]
                 );
                 
-                $upload = wp_handle_upload($file, array('test_form' => false));
-                if (!isset($upload['error'])) {
+                $upload = bebeats_handle_validated_upload($file, bebeats_allowed_audio_mimes());
+                if ($upload !== null) {
                     $sounds[] = $upload['url'];
                 }
             }
@@ -1008,24 +1032,29 @@ function bebeats_handle_register_artiste_step4() {
     ));
     
     if ($registration) {
-        // Décoder le mot de passe
-        $password = base64_decode($registration->password_hash);
-        
-        // Créer l'utilisateur WordPress
+        // Créer l'utilisateur WordPress avec un mot de passe aléatoire,
+        // puis appliquer directement le hash stocké (le mot de passe clair n'existe plus)
         $user_id = wp_create_user(
             $registration->username,
-            $password,
+            wp_generate_password(32),
             $registration->email
         );
         
         if (!is_wp_error($user_id)) {
-            // Donner les permissions nécessaires pour créer des posts
+            global $wpdb;
+            $wpdb->update(
+                $wpdb->users,
+                array('user_pass' => $registration->password_hash),
+                array('ID' => $user_id),
+                array('%s'),
+                array('%d')
+            );
+            clean_user_cache($user_id);
+            
+            // Rôle auteur : permet la publication de posts (fan et artiste)
             $user_obj = get_userdata($user_id);
             if ($user_obj) {
-                $user_obj->add_cap('publish_posts');
-                $user_obj->add_cap('edit_posts');
-                $user_obj->add_cap('edit_published_posts');
-                $user_obj->add_cap('delete_posts');
+                $user_obj->set_role('author');
             }
             
             // Mettre à jour les meta utilisateur
@@ -1048,14 +1077,8 @@ function bebeats_handle_register_artiste_step4() {
             wp_set_current_user($user_id);
             wp_set_auth_cookie($user_id);
             
-            // Marquer l'inscription comme complétée
-            $wpdb->update(
-                $table_name,
-                array('step_completed' => 5),
-                array('registration_key' => $registration_key),
-                array('%d'),
-                array('%s')
-            );
+            // Supprimer la ligne d'inscription (contient encore le hash temporaire)
+            $wpdb->delete($table_name, array('registration_key' => $registration_key), array('%s'));
             
             // Supprimer le cookie
             setcookie('bebeats_registration_key', '', time() - 3600, '/');
@@ -1099,24 +1122,16 @@ function bebeats_handle_update_profile() {
     
     // Gérer l'upload de la photo de profil
     if (!empty($_FILES['profile_photo']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['profile_photo'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['profile_photo'], bebeats_allowed_image_mimes());
+        if ($upload !== null) {
             update_user_meta($user_id, 'bebeats_profile_photo', $upload['url']);
         }
     }
     
     // Gérer l'upload de la bannière
     if (!empty($_FILES['banner']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['banner'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['banner'], bebeats_allowed_image_mimes());
+        if ($upload !== null) {
             update_user_meta($user_id, 'bebeats_banner', $upload['url']);
         }
     }
@@ -1162,28 +1177,16 @@ function bebeats_handle_create_post() {
     }
     
     // Vérifier le nonce
-    error_log('bebeats_create_post: Vérification du nonce');
-    error_log('bebeats_create_post: POST keys: ' . print_r(array_keys($_POST), true));
-    error_log('bebeats_create_post: Nonce reçu: ' . (isset($_POST['bebeats_create_post_nonce']) ? $_POST['bebeats_create_post_nonce'] : 'NON DÉFINI'));
-    
     if (!isset($_POST['bebeats_create_post_nonce'])) {
-        error_log('bebeats_create_post: ERREUR - Nonce non présent dans POST');
         wp_redirect(home_url('/contribuer?error=1'));
         exit;
     }
     
     $nonce_verified = wp_verify_nonce($_POST['bebeats_create_post_nonce'], 'bebeats_create_post_action');
-    error_log('bebeats_create_post: Résultat vérification nonce: ' . ($nonce_verified ? 'VALIDE' : 'INVALIDE'));
-    
     if (!$nonce_verified) {
-        error_log('bebeats_create_post: ERREUR - Nonce invalide');
         wp_redirect(home_url('/contribuer?error=1'));
         exit;
     }
-    
-    // Debug : vérifier que les données sont bien reçues
-    error_log('bebeats_create_post: Données reçues - POST: ' . print_r($_POST, true));
-    error_log('bebeats_create_post: Fichiers reçus - FILES: ' . print_r($_FILES, true));
     
     $current_user = wp_get_current_user();
     $user_id = $current_user->ID;
@@ -1231,12 +1234,8 @@ function bebeats_handle_create_post() {
     
     // Gérer l'upload du média selon le type
     if (($post_type === 'fan-art' || $post_type === 'event') && !empty($_FILES['media']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['media'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['media'], bebeats_allowed_media_mimes());
+        if ($upload !== null) {
             $media_url = $upload['url'];
             // Déterminer le type de média
             $file_type = wp_check_filetype($upload['file']);
@@ -1249,12 +1248,8 @@ function bebeats_handle_create_post() {
             }
         }
     } elseif ($post_type === 'audio' && !empty($_FILES['media']['name'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        require_once(ABSPATH . 'wp-admin/includes/media.php');
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        
-        $upload = wp_handle_upload($_FILES['media'], array('test_form' => false));
-        if (!isset($upload['error'])) {
+        $upload = bebeats_handle_validated_upload($_FILES['media'], bebeats_allowed_audio_mimes());
+        if ($upload !== null) {
             $media_url = $upload['url'];
             $media_type = 'audio';
         }
@@ -1278,7 +1273,6 @@ function bebeats_handle_create_post() {
     // Vérifier que la table existe
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
     if (!$table_exists) {
-        error_log('bebeats_create_post: ❌ ERREUR - La table ' . $table_name . ' n\'existe pas!');
         // Créer la table si elle n'existe pas
         bebeats_create_posts_table();
     }
@@ -1303,7 +1297,6 @@ function bebeats_handle_create_post() {
         $insert_formats[] = '%s';
     }
     
-    error_log('bebeats_create_post: Données à insérer: ' . print_r($insert_data, true));
     
     $result = $wpdb->insert(
         $table_name,
@@ -1312,25 +1305,11 @@ function bebeats_handle_create_post() {
     );
     
     if ($result === false) {
-        error_log('bebeats_create_post: Erreur lors de l\'insertion dans la base de données');
-        error_log('bebeats_create_post: Erreur WP: ' . $wpdb->last_error);
-        error_log('bebeats_create_post: Données à insérer: ' . print_r(array(
-            'user_id' => $user_id,
-            'post_type' => $post_type,
-            'content' => substr($content, 0, 100) . '...',
-            'media_url' => $media_url,
-            'media_type' => $media_type
-        ), true));
         wp_redirect(home_url('/contribuer?error=1'));
         exit;
     }
     
     $bebeats_post_id = $wpdb->insert_id;
-    error_log('bebeats_create_post: Post créé avec succès dans la table personnalisée, ID: ' . $bebeats_post_id);
-    error_log('bebeats_create_post: User ID: ' . $user_id);
-    error_log('bebeats_create_post: Post Type: ' . $post_type);
-    error_log('bebeats_create_post: Content: ' . (!empty($content) ? substr($content, 0, 50) . '...' : 'VIDE'));
-    error_log('bebeats_create_post: Media URL: ' . (!empty($media_url) ? $media_url : 'Aucun'));
     
     // Vérifier que le post a bien été inséré en le récupérant
     $verify_post = $wpdb->get_row($wpdb->prepare(
@@ -1338,9 +1317,7 @@ function bebeats_handle_create_post() {
         $bebeats_post_id
     ));
     if ($verify_post) {
-        error_log('bebeats_create_post: ✅ Post vérifié dans la base de données');
     } else {
-        error_log('bebeats_create_post: ❌ ERREUR - Post non trouvé après insertion!');
     }
     
     // Créer aussi un post WordPress pour qu'il apparaisse dans le menu Posts
@@ -1368,16 +1345,6 @@ function bebeats_handle_create_post() {
         }
     }
     
-    // Donner les permissions nécessaires à l'utilisateur pour créer des posts
-    $user = get_userdata($user_id);
-    if ($user) {
-        // Ajouter les capacités nécessaires de manière permanente
-        $user->add_cap('publish_posts');
-        $user->add_cap('edit_posts');
-        $user->add_cap('edit_published_posts');
-        $user->add_cap('delete_posts');
-    }
-    
     // Utiliser wp_set_current_user pour que wp_insert_post reconnaisse les permissions
     wp_set_current_user($user_id);
     
@@ -1390,10 +1357,6 @@ function bebeats_handle_create_post() {
         'post_date'     => current_time('mysql')
     );
     
-    error_log('bebeats_create_post: Tentative de création du post WordPress');
-    error_log('bebeats_create_post: User ID: ' . $user_id);
-    error_log('bebeats_create_post: Permissions: ' . (current_user_can('publish_posts') ? 'Oui' : 'Non'));
-    error_log('bebeats_create_post: Titre: ' . $wp_post_title);
     
     // Désactiver temporairement les filtres qui pourraient bloquer la création
     remove_action('save_post', 'wp_save_post_revision', 10);
@@ -1417,14 +1380,9 @@ function bebeats_handle_create_post() {
         update_post_meta($wp_post_id, 'bebeats_allow_repost', $allow_repost);
         update_post_meta($wp_post_id, 'bebeats_show_likes', $show_likes);
         
-        error_log('bebeats_create_post: Post WordPress créé avec succès, ID: ' . $wp_post_id);
-        error_log('bebeats_create_post: Titre du post: ' . $wp_post_title);
-        error_log('bebeats_create_post: Auteur: ' . $user_id);
     } else {
         $error_msg = is_wp_error($wp_post_id) ? $wp_post_id->get_error_message() : 'Erreur inconnue';
-        error_log('bebeats_create_post: Erreur lors de la création du post WordPress: ' . $error_msg);
         if (is_wp_error($wp_post_id)) {
-            error_log('bebeats_create_post: Erreurs détaillées: ' . print_r($wp_post_id->get_error_messages(), true));
         }
     }
     
@@ -1435,9 +1393,7 @@ function bebeats_handle_create_post() {
     ));
     
     if ($final_check > 0) {
-        error_log('bebeats_create_post: ✅ Post confirmé dans la base de données avant redirection');
     } else {
-        error_log('bebeats_create_post: ❌ ERREUR CRITIQUE - Post non trouvé avant redirection!');
     }
     
     // Rediriger vers la page contribuer avec un message de succès
@@ -1483,7 +1439,6 @@ function bebeats_handle_post_reaction() {
     // Vérifier que la table existe
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
     if (!$table_exists) {
-        error_log('bebeats_post_reaction: La table n\'existe pas, création...');
         bebeats_create_post_reactions_table();
     }
     
@@ -1591,8 +1546,6 @@ function bebeats_handle_post_reaction() {
             } else {
                 // Si l'insertion échoue, vérifier l'erreur et réessayer avec une vérification
                 $error_message = $wpdb->last_error;
-                error_log('bebeats_post_reaction: Erreur insertion - ' . $error_message);
-                error_log('bebeats_post_reaction: Post ID: ' . $post_id . ', User ID: ' . $user_id . ', Reaction Type: ' . $reaction_type);
                 
                 // Vérifier à nouveau si la réaction existe (au cas où elle aurait été créée entre-temps)
                 $existing_check = $wpdb->get_row($wpdb->prepare(

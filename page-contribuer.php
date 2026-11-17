@@ -61,6 +61,7 @@ if (is_user_logged_in()) {
                 <input type="hidden" name="allow_comments" id="allow-comments-input" value="1">
                 <input type="hidden" name="allow_repost" id="allow-repost-input" value="1">
                 <input type="hidden" name="show_likes" id="show-likes-input" value="1">
+                <input type="hidden" name="tagged_users" id="tagged-users-input" value="">
                 <!-- Modal pour identifier des personnes -->
                 <div class="tag-user-modal" id="tag-user-modal" style="display: none;">
                     <div class="tag-user-modal-content">

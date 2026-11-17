@@ -60,6 +60,22 @@ $current_user_id = is_user_logged_in() ? get_current_user_id() : 0;
         
         $stats_map = bebeats_get_reactions_stats(wp_list_pluck($posts, 'id'), $current_user_id);
         
+        // Carte des personnes identifiees (une seule requete pour tous les posts)
+        $tagged_ids = array();
+        foreach ($posts as $post) {
+            if (!empty($post->tagged_users)) {
+                foreach (explode(',', $post->tagged_users) as $tid) {
+                    $tagged_ids[] = (int) $tid;
+                }
+            }
+        }
+        $tagged_users_map = array();
+        if (!empty($tagged_ids)) {
+            foreach (get_users(array('include' => array_unique($tagged_ids))) as $tagged_user) {
+                $tagged_users_map[$tagged_user->ID] = $tagged_user;
+            }
+        }
+        
         if (empty($posts)): ?>
             <div class="feed-empty glassmorphism">
                 <p>Aucun post pour le moment. Soyez le premier à publier !</p>
@@ -107,6 +123,23 @@ $current_user_id = is_user_logged_in() ? get_current_user_id() : 0;
                         <span class="post-time" data-timestamp="<?php echo esc_attr($post_timestamp); ?>">Il y a <?php echo esc_html($time_ago); ?></span>
                     </div>
                     </div>
+                    
+                    <?php if (!empty($post->tagged_users)): ?>
+                        <div class="post-tagged-users">
+                            <span class="post-tagged-label">Identifié :</span>
+                            <?php
+                            $tagged_links = array();
+                            foreach (explode(',', $post->tagged_users) as $tid) {
+                                $tid = (int) $tid;
+                                if (isset($tagged_users_map[$tid])) {
+                                    $tu = $tagged_users_map[$tid];
+                                    $tagged_links[] = '<a href="' . esc_url(home_url('/profil?user=' . $tid)) . '" class="post-tagged-link">@' . esc_html($tu->user_login) . '</a>';
+                                }
+                            }
+                            echo implode(', ', $tagged_links);
+                            ?>
+                        </div>
+                    <?php endif; ?>
                     
                     <!-- Contenu du post -->
                     <div class="post-content">

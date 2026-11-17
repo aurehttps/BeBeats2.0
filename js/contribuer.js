@@ -4,7 +4,15 @@
 let taggedUsers = [];
 
 // Fonction globale pour mettre à jour l'affichage des utilisateurs identifiés
+function syncTaggedUsersInput() {
+    const input = document.getElementById('tagged-users-input');
+    if (input) {
+        input.value = taggedUsers.map(u => u.id).join(',');
+    }
+}
+
 function updateTaggedUsersDisplay() {
+    syncTaggedUsersInput();
     const container = document.getElementById('tagged-users');
     const list = document.getElementById('tagged-list');
     

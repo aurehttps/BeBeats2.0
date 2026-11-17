@@ -222,6 +222,7 @@ if (!empty($genres) && is_array($genres)) {
                 </div>
             <?php endif; ?>
 
+            <?php
             // Fonction helper pour afficher un post dans un carrousel (format compact)
             function bebeats_render_carousel_post($post, $stats, $current_user_id) {
                 $time_ago = human_time_diff(strtotime($post->created_at), current_time('timestamp'));

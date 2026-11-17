@@ -17,7 +17,13 @@ get_header(); ?>
                 
                 <?php if (isset($_GET['error']) && $_GET['error'] == '1'): ?>
                     <div class="auth-error-message">
-                        Désolé, nous ne trouvons pas compte lier à cette adresse mail/pseudo ou le mot de passe ne correspond pas...
+                        Identifiants incorrects : nous ne trouvons pas de compte lié à cette adresse mail/pseudo, ou le mot de passe ne correspond pas.
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (isset($_GET['reset_success']) && $_GET['reset_success'] == '1'): ?>
+                    <div class="auth-success-message">
+                        Ton mot de passe a bien été modifié. Connecte-toi avec le nouveau.
                     </div>
                 <?php endif; ?>
                 
@@ -51,6 +57,10 @@ get_header(); ?>
                     
                     <button type="submit" class="auth-submit-btn">Connexion</button>
                 </form>
+                
+                <p class="auth-alt-link">
+                    <a href="<?php echo esc_url(home_url('/mot-de-passe-oublie')); ?>">Mot de passe oublié ?</a>
+                </p>
             </div>
         </div>
     </main>

@@ -386,3 +386,29 @@ body.mode-orange .logout-btn:hover {
         margin-top: 0;
     }
 }
+
+/* Section Compte : pseudo visible + mot de passe */
+.account-settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.account-setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.account-input {
+    background: var(--bebeats-surface-2);
+    border: 1px solid var(--bebeats-border);
+    color: var(--bebeats-text);
+    font-family: 'URW Form', sans-serif;
+}
+
+.account-input:focus {
+    border-color: var(--bebeats-accent);
+    outline: none;
+}

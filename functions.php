@@ -82,6 +82,7 @@ function bebeats_enqueue_scripts() {
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'followNonce' => wp_create_nonce('bebeats_follow_action'),
             'notificationsNonce' => wp_create_nonce('bebeats_notifications_action'),
+            'badgeNonce' => wp_create_nonce('bebeats_badge_action'),
             'isLoggedIn' => true
         ));
     }
@@ -440,7 +441,8 @@ function bebeats_create_default_pages() {
         'profil'                       => 'Profil Page',
         'welcome'                      => 'Welcome Page',
         'mot-de-passe-oublie'          => 'Mot de passe oublie',
-        'reinitialiser-mot-de-passe'   => 'Reinitialiser mot de passe'
+        'reinitialiser-mot-de-passe'   => 'Reinitialiser mot de passe',
+        'succes'                       => 'Succes Page'
     );
 
     $template_files = array(
@@ -465,7 +467,8 @@ function bebeats_create_default_pages() {
         'profil'                     => 'page-profil.php',
         'welcome'                    => 'page-welcome.php',
         'mot-de-passe-oublie'        => 'page-mot-de-passe-oublie.php',
-        'reinitialiser-mot-de-passe' => 'page-reinitialiser-mot-de-passe.php'
+        'reinitialiser-mot-de-passe' => 'page-reinitialiser-mot-de-passe.php',
+        'succes'                     => 'page-succes.php'
     );
 
     foreach ($pages as $slug => $title) {
@@ -589,6 +592,8 @@ function bebeats_ajax_toggle_follow() {
             'artist_id' => $artist_id
         ), array('%d', '%d'));
         $following = true;
+        // Gamification : +5 points par nouvel abonnement
+        bebeats_award_points($current_user_id, 5);
     }
     
     $followers_count = (int) $wpdb->get_var($wpdb->prepare(
@@ -926,6 +931,144 @@ function bebeats_handle_reset_password() {
 }
 add_action('admin_post_bebeats_reset_password', 'bebeats_handle_reset_password');
 add_action('admin_post_nopriv_bebeats_reset_password', 'bebeats_handle_reset_password');
+
+/**
+ * Gamification : points, badges et titres
+ */
+
+function bebeats_award_points($user_id, $points) {
+    $current = (int) get_user_meta($user_id, 'bebeats_points', true);
+    update_user_meta($user_id, 'bebeats_points', $current + (int) $points);
+}
+
+function bebeats_get_user_points($user_id) {
+    return (int) get_user_meta($user_id, 'bebeats_points', true);
+}
+
+/**
+ * Statistiques d'activite d'un utilisateur (pour le calcul des badges)
+ */
+function bebeats_get_user_activity($user_id) {
+    global $wpdb;
+    $posts_table = $wpdb->prefix . 'bebeats_posts';
+    $reactions_table = $wpdb->prefix . 'bebeats_post_reactions';
+    $follows_table = $wpdb->prefix . 'bebeats_follows';
+    
+    return array(
+        'posts' => (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $posts_table WHERE user_id = %d", $user_id
+        )),
+        'comments' => (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $reactions_table WHERE user_id = %d AND reaction_type = 'comment'", $user_id
+        )),
+        'likes_given' => (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $reactions_table WHERE user_id = %d AND reaction_type = 'like'", $user_id
+        )),
+        'following' => (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $follows_table WHERE follower_id = %d", $user_id
+        )),
+        'points' => bebeats_get_user_points($user_id)
+    );
+}
+
+/**
+ * Catalogue des badges : cle, titre, description, icone, condition
+ */
+function bebeats_get_badge_catalog() {
+    return array(
+        'premier_pas' => array(
+            'title' => 'Premier pas',
+            'description' => 'Publier son premier contenu',
+            'icon' => 'footsteps',
+            'condition' => array('type' => 'posts', 'value' => 1)
+        ),
+        'voix_du_peuple' => array(
+            'title' => 'Voix du peuple',
+            'description' => 'Publier 5 contenus',
+            'icon' => 'megaphone',
+            'condition' => array('type' => 'posts', 'value' => 5)
+        ),
+        'commentateur' => array(
+            'title' => 'Commentateur',
+            'description' => 'Ecrire 10 commentaires',
+            'icon' => 'chat',
+            'condition' => array('type' => 'comments', 'value' => 10)
+        ),
+        'soutien_fidele' => array(
+            'title' => 'Soutien fidele',
+            'description' => 'Suivre 3 artistes',
+            'icon' => 'heart',
+            'condition' => array('type' => 'following', 'value' => 3)
+        ),
+        'super_fan' => array(
+            'title' => 'Super Fan',
+            'description' => 'Atteindre 100 points',
+            'icon' => 'star',
+            'condition' => array('type' => 'points', 'value' => 100)
+        ),
+        'veteran' => array(
+            'title' => 'Veteran BeBeats',
+            'description' => 'Atteindre 500 points',
+            'icon' => 'trophy',
+            'condition' => array('type' => 'points', 'value' => 500)
+        )
+    );
+}
+
+/**
+ * Etat des badges d'un utilisateur : debloque ou non + progression
+ */
+function bebeats_get_user_badges($user_id) {
+    $activity = bebeats_get_user_activity($user_id);
+    $catalog = bebeats_get_badge_catalog();
+    $selected = get_user_meta($user_id, 'bebeats_selected_badge', true);
+    
+    $badges = array();
+    foreach ($catalog as $key => $badge) {
+        $current = isset($activity[$badge['condition']['type']]) ? $activity[$badge['condition']['type']] : 0;
+        $target = (int) $badge['condition']['value'];
+        $badges[$key] = array(
+            'title' => $badge['title'],
+            'description' => $badge['description'],
+            'icon' => $badge['icon'],
+            'current' => $current,
+            'target' => $target,
+            'unlocked' => $current >= $target,
+            'selected' => ($selected === $key)
+        );
+    }
+    
+    return $badges;
+}
+
+/**
+ * Selection du titre affiche (AJAX)
+ */
+function bebeats_ajax_select_badge() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Connexion requise'));
+    }
+    
+    check_ajax_referer('bebeats_badge_action', 'nonce');
+    
+    $badge_key = isset($_POST['badge']) ? sanitize_key($_POST['badge']) : '';
+    $user_id = get_current_user_id();
+    
+    if (empty($badge_key)) {
+        // Deselection : revenir au badge par defaut
+        delete_user_meta($user_id, 'bebeats_selected_badge');
+        wp_send_json_success(array('selected' => ''));
+    }
+    
+    $badges = bebeats_get_user_badges($user_id);
+    if (!isset($badges[$badge_key]) || !$badges[$badge_key]['unlocked']) {
+        wp_send_json_error(array('message' => 'Badge non debloque'));
+    }
+    
+    update_user_meta($user_id, 'bebeats_selected_badge', $badge_key);
+    wp_send_json_success(array('selected' => $badge_key));
+}
+add_action('wp_ajax_bebeats_select_badge', 'bebeats_ajax_select_badge');
 
 add_action('after_switch_theme', 'bebeats_create_registration_table');
 add_action('after_switch_theme', 'bebeats_create_posts_table');
@@ -1798,6 +1941,9 @@ function bebeats_handle_create_post() {
         bebeats_notify_followers($user_id, $wpdb->insert_id);
     }
     
+    // Gamification : +10 points par publication
+    bebeats_award_points($user_id, 10);
+    
     // Rediriger vers la page contribuer avec un message de succès
     wp_redirect(home_url('/contribuer?success=1'));
     exit;
@@ -1935,6 +2081,11 @@ function bebeats_handle_post_reaction() {
             );
             
             if ($inserted !== false) {
+                // Gamification : +1 point pour un like donne
+                if ($reaction_type === 'like') {
+                    bebeats_award_points($user_id, 1);
+                }
+                
                 // Récupérer le nouveau compteur
                 $new_count = (int) $wpdb->get_var($wpdb->prepare(
                     "SELECT COUNT(DISTINCT user_id) FROM $table_name WHERE post_id = %d AND reaction_type = %s",
@@ -2057,6 +2208,9 @@ function bebeats_handle_post_reaction() {
                     'likes_count' => 0
                 );
             }
+            
+            // Gamification : +2 points par commentaire publie
+            bebeats_award_points($user_id, 2);
             
             wp_send_json_success(array(
                 'action' => 'added', 

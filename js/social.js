@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     initFollowButtons();
     initNotificationsBell();
+    initBadgeSelection();
 });
 
 /* ---------- Suivi d'artistes ---------- */
@@ -203,5 +204,53 @@ function loadNotifications(dropdown) {
                 }
             });
         }
+    });
+}
+
+/* ---------- Badges (page Succes) ---------- */
+
+function initBadgeSelection() {
+    document.querySelectorAll('.succes-badge.is-unlocked').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            selectBadge(btn);
+        });
+    });
+}
+
+function selectBadge(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    var badgeKey = btn.getAttribute('data-badge');
+    var wasSelected = btn.classList.contains('is-selected');
+
+    if (typeof bebeatsSocial === 'undefined') {
+        btn.disabled = false;
+        return;
+    }
+
+    jQuery.post(bebeatsSocial.ajaxUrl, {
+        action: 'bebeats_select_badge',
+        nonce: bebeatsSocial.badgeNonce,
+        badge: wasSelected ? '' : badgeKey
+    }).done(function (response) {
+        if (response && response.success) {
+            document.querySelectorAll('.succes-badge').forEach(function (b) {
+                b.classList.remove('is-selected');
+                var label = b.querySelector('.succes-badge-selected-label');
+                if (label) label.remove();
+            });
+
+            if (!wasSelected) {
+                btn.classList.add('is-selected');
+                var label = document.createElement('span');
+                label.className = 'succes-badge-selected-label';
+                label.textContent = 'Titre affiché';
+                btn.appendChild(label);
+            }
+        }
+    }).always(function () {
+        btn.disabled = false;
     });
 }

@@ -40,8 +40,16 @@ if (empty($profile_photo)) {
     $profile_photo = get_avatar_url($viewed_user_id, array('size' => 200));
 }
 
-// Déterminer le badge selon le type d'utilisateur
+// Déterminer le badge selon le type d'utilisateur,
+// complete par le titre gamification selectionne le cas echeant
 $badge = ($user_type === 'artiste') ? 'Artiste' : 'Fan';
+$selected_badge_key = get_user_meta($viewed_user_id, 'bebeats_selected_badge', true);
+if (!empty($selected_badge_key)) {
+    $badge_catalog = bebeats_get_badge_catalog();
+    if (isset($badge_catalog[$selected_badge_key])) {
+        $badge = $badge_catalog[$selected_badge_key]['title'];
+    }
+}
 
 // Suivi : compteurs et état
 global $wpdb;

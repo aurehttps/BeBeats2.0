@@ -207,22 +207,54 @@ function loadNotifications(dropdown) {
     });
 }
 
-/* ---------- Badges (page Succes) ---------- */
+/* ---------- Succes : filtres, titres et badges (page Succes) ---------- */
 
 function initBadgeSelection() {
+    // Filtres
+    document.querySelectorAll('.succes-filter-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            switchSuccesFilter(btn.getAttribute('data-filter'));
+        });
+    });
+
+    // Cartes titres et badges
     document.querySelectorAll('.succes-badge.is-unlocked').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
             e.preventDefault();
-            selectBadge(btn);
+            if (btn.getAttribute('data-kind') === 'badge') {
+                toggleBadgePin(btn);
+            } else {
+                selectTitle(btn);
+            }
+        });
+    });
+
+    // Retrait depuis la vue "Sur mon profil"
+    document.querySelectorAll('.succes-profil-item.is-selected[data-badge]').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            // Les items de la vue profil portent data-badge : retrait d'un badge epingle
+            toggleBadgePinFromProfil(item);
         });
     });
 }
 
-function selectBadge(btn) {
+function switchSuccesFilter(filter) {
+    document.querySelectorAll('.succes-filter-btn').forEach(function (b) {
+        b.classList.toggle('is-active', b.getAttribute('data-filter') === filter);
+    });
+
+    document.querySelectorAll('.succes-view').forEach(function (view) {
+        view.style.display = view.getAttribute('data-view') === filter ? 'block' : 'none';
+    });
+}
+
+function selectTitle(btn) {
     if (btn.disabled) return;
     btn.disabled = true;
 
-    var badgeKey = btn.getAttribute('data-badge');
+    var titleKey = btn.getAttribute('data-badge');
     var wasSelected = btn.classList.contains('is-selected');
 
     if (typeof bebeatsSocial === 'undefined') {
@@ -233,10 +265,10 @@ function selectBadge(btn) {
     jQuery.post(bebeatsSocial.ajaxUrl, {
         action: 'bebeats_select_badge',
         nonce: bebeatsSocial.badgeNonce,
-        badge: wasSelected ? '' : badgeKey
+        badge: wasSelected ? '' : titleKey
     }).done(function (response) {
         if (response && response.success) {
-            document.querySelectorAll('.succes-badge').forEach(function (b) {
+            document.querySelectorAll('.succes-title-card').forEach(function (b) {
                 b.classList.remove('is-selected');
                 var label = b.querySelector('.succes-badge-selected-label');
                 if (label) label.remove();
@@ -249,8 +281,57 @@ function selectBadge(btn) {
                 label.textContent = 'Titre épinglé';
                 btn.appendChild(label);
             }
+
+            setTimeout(function () { window.location.reload(); }, 400);
         }
     }).always(function () {
         btn.disabled = false;
     });
+}
+
+function toggleBadgePin(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    var badgeKey = btn.getAttribute('data-badge');
+
+    if (typeof bebeatsSocial === 'undefined') {
+        btn.disabled = false;
+        return;
+    }
+
+    jQuery.post(bebeatsSocial.ajaxUrl, {
+        action: 'bebeats_toggle_badge_pin',
+        nonce: bebeatsSocial.badgeNonce,
+        badge: badgeKey
+    }).done(function (response) {
+        if (response && response.success) {
+            var isPinned = response.data.pinned;
+            btn.classList.toggle('is-selected', isPinned);
+
+            var label = btn.querySelector('.succes-badge-selected-label');
+            if (isPinned && !label) {
+                label = document.createElement('span');
+                label.className = 'succes-badge-selected-label';
+                label.textContent = 'Épinglé';
+                btn.appendChild(label);
+            } else if (!isPinned && label) {
+                label.remove();
+            }
+
+            // Rafraichir la vue "Sur mon profil" apres un court delai
+            setTimeout(function () { window.location.reload(); }, 400);
+        }
+    }).always(function () {
+        btn.disabled = false;
+    });
+}
+
+function toggleBadgePinFromProfil(item) {
+    // Retrouver la carte correspondante dans la vue Badges et inverser son epinglage
+    var badgeKey = item.getAttribute('data-badge');
+    var card = document.querySelector('.succes-badge[data-kind="badge"][data-badge="' + badgeKey + '"]');
+    if (card) {
+        toggleBadgePin(card);
+    }
 }

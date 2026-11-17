@@ -1362,3 +1362,80 @@ body footer div:hover {
     color: var(--bebeats-text-muted);
     font-style: italic;
 }
+
+.succes-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.25rem 0;
+}
+
+.succes-filter-btn {
+    padding: 0.45rem 1.1rem;
+    border-radius: 999px;
+    border: 1px solid var(--bebeats-border);
+    background: var(--bebeats-surface);
+    color: var(--bebeats-text);
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.succes-filter-btn:hover {
+    border-color: var(--bebeats-accent);
+}
+
+.succes-filter-btn.is-active {
+    background: var(--bebeats-accent);
+    border-color: var(--bebeats-accent);
+    color: #ffffff;
+}
+
+.succes-view {
+    margin-bottom: 1.25rem;
+}
+
+.succes-badges-title-badges {
+    margin-top: 1.5rem;
+}
+
+.succes-profil-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-radius: 1rem;
+    border: 1px solid var(--bebeats-accent);
+    background: var(--bebeats-surface);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.succes-profil-item:hover {
+    background: var(--bebeats-accent);
+    color: #ffffff;
+}
+
+.succes-profil-item:hover .succes-badge-icon {
+    color: #ffffff;
+}
+
+.succes-profil-item.is-selected {
+    border-color: var(--bebeats-accent);
+}
+
+.succes-profil-badges-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.succes-empty-hint {
+    margin: 0.75rem 0 0;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    color: var(--bebeats-text-muted);
+}

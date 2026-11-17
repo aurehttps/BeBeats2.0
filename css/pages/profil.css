@@ -1099,3 +1099,44 @@ html.mode-orange .carousel-post-action-btn.active .carousel-action-icon {
         gap: 0.75rem;
     }
 }
+
+.profile-pinned-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+    padding: 0.9rem 1.1rem;
+    border-radius: 1rem;
+    border: 1px solid var(--bebeats-border);
+    background: var(--bebeats-surface);
+}
+
+.profile-pinned-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.profile-pinned-badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--bebeats-accent);
+    color: #ffffff;
+    flex-shrink: 0;
+}
+
+.profile-pinned-badge-icon svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.profile-pinned-badge-name {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bebeats-text);
+}

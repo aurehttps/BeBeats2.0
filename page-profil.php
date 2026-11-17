@@ -78,56 +78,23 @@ if (!empty($genres) && is_array($genres)) {
                 $current_user->ID
             ));
             
-            // Debug
-            if (!empty($user_posts)) {
-            }
+            $stats_map = bebeats_get_reactions_stats(wp_list_pluck($user_posts, 'id'), $current_user_id);
             
             if (!empty($user_posts)): ?>
                 <div class="profile-section glassmorphism">
                     <h2 class="section-title">Mes publications</h2>
                     <div class="profile-posts-list">
                         <?php foreach ($user_posts as $post): 
-                            // Utiliser COUNT(DISTINCT user_id) pour s'assurer qu'un utilisateur ne compte qu'une fois
-                            $likes_count = (int) $wpdb->get_var($wpdb->prepare(
-                                "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'like'",
-                                $post->id
-                            ));
-                            
-                            // Les commentaires peuvent être multiples par utilisateur
-                            $comments_count = (int) $wpdb->get_var($wpdb->prepare(
-                                "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'comment' AND (parent_comment_id IS NULL OR parent_comment_id = 0)",
-                                $post->id
-                            ));
-                            
-                            $reposts_count = (int) $wpdb->get_var($wpdb->prepare(
-                                "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'repost'",
-                                $post->id
-                            ));
+                            $stats = isset($stats_map[$post->id]) ? $stats_map[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
+                            $likes_count = $stats['likes_count'];
+                            $comments_count = $stats['comments_count'];
+                            $reposts_count = $stats['reposts_count'];
+                            $user_liked = $stats['user_liked'];
+                            $user_favorited = $stats['user_favorited'];
+                            $user_reposted = $stats['user_reposted'];
                             
                             $time_ago = human_time_diff(strtotime($post->created_at), current_time('timestamp'));
                             $post_timestamp = strtotime($post->created_at);
-                            
-                            // Vérifier si l'utilisateur actuel a liké/favorisé/reposté ce post
-                            $user_liked = false;
-                            $user_favorited = false;
-                            $user_reposted = false;
-                            
-                            if ($current_user_id > 0) {
-                                $user_liked = $wpdb->get_var($wpdb->prepare(
-                                    "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'like'",
-                                    $post->id, $current_user_id
-                                )) > 0;
-                                
-                                $user_favorited = $wpdb->get_var($wpdb->prepare(
-                                    "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'favorite'",
-                                    $post->id, $current_user_id
-                                )) > 0;
-                                
-                                $user_reposted = $wpdb->get_var($wpdb->prepare(
-                                    "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'repost'",
-                                    $post->id, $current_user_id
-                                )) > 0;
-                            }
                         ?>
                             <a href="<?php echo esc_url(home_url('/feed-page#post-' . $post->id)); ?>" class="profile-post-link">
                                 <article class="profile-post-item">
@@ -214,55 +181,6 @@ if (!empty($genres) && is_array($genres)) {
                 </div>
             <?php endif; ?>
 
-            <?php
-            // Fonction helper pour récupérer les statistiques d'un post
-            function bebeats_get_post_stats($post_id, $current_user_id, $wpdb, $reactions_table) {
-                $likes_count = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'like'",
-                    $post_id
-                ));
-                
-                $comments_count = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'comment' AND (parent_comment_id IS NULL OR parent_comment_id = 0)",
-                    $post_id
-                ));
-                
-                $reposts_count = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'repost'",
-                    $post_id
-                ));
-                
-                $user_liked = false;
-                $user_favorited = false;
-                $user_reposted = false;
-                
-                if ($current_user_id > 0) {
-                    $user_liked = $wpdb->get_var($wpdb->prepare(
-                        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'like'",
-                        $post_id, $current_user_id
-                    )) > 0;
-                    
-                    $user_favorited = $wpdb->get_var($wpdb->prepare(
-                        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'favorite'",
-                        $post_id, $current_user_id
-                    )) > 0;
-                    
-                    $user_reposted = $wpdb->get_var($wpdb->prepare(
-                        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'repost'",
-                        $post_id, $current_user_id
-                    )) > 0;
-                }
-                
-                return array(
-                    'likes_count' => $likes_count,
-                    'comments_count' => $comments_count,
-                    'reposts_count' => $reposts_count,
-                    'user_liked' => $user_liked,
-                    'user_favorited' => $user_favorited,
-                    'user_reposted' => $user_reposted
-                );
-            }
-            
             // Fonction helper pour afficher un post dans un carrousel (format compact)
             function bebeats_render_carousel_post($post, $stats, $current_user_id) {
                 $time_ago = human_time_diff(strtotime($post->created_at), current_time('timestamp'));
@@ -449,7 +367,7 @@ if (!empty($genres) && is_array($genres)) {
                         <div class="carousel-wrapper">
                             <div class="carousel-track" data-carousel="fanart-user">
                                 <?php foreach ($user_fanart_posts as $post): 
-                                    $stats = bebeats_get_post_stats($post->id, $current_user_id, $wpdb, $reactions_table);
+                                    $stats = isset($carousel_stats[$post->id]) ? $carousel_stats[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
                                     bebeats_render_carousel_post($post, $stats, $current_user_id);
                                 endforeach; ?>
                             </div>
@@ -488,7 +406,7 @@ if (!empty($genres) && is_array($genres)) {
                         <div class="carousel-wrapper">
                             <div class="carousel-track" data-carousel="audio-user">
                                 <?php foreach ($user_audio_posts as $post): 
-                                    $stats = bebeats_get_post_stats($post->id, $current_user_id, $wpdb, $reactions_table);
+                                    $stats = isset($carousel_stats[$post->id]) ? $carousel_stats[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
                                     bebeats_render_carousel_post($post, $stats, $current_user_id);
                                 endforeach; ?>
                             </div>
@@ -514,6 +432,11 @@ if (!empty($genres) && is_array($genres)) {
                  LIMIT 20",
                 $current_user->ID
             ));
+            $carousel_stats = bebeats_get_reactions_stats(array_merge(
+                wp_list_pluck($user_fanart_posts, 'id'),
+                wp_list_pluck($user_audio_posts, 'id'),
+                wp_list_pluck($user_article_posts, 'id')
+            ), $current_user_id);
             
             if (!empty($user_article_posts)): ?>
                 <div class="profile-section glassmorphism">
@@ -527,7 +450,7 @@ if (!empty($genres) && is_array($genres)) {
                         <div class="carousel-wrapper">
                             <div class="carousel-track" data-carousel="articles-user">
                                 <?php foreach ($user_article_posts as $post): 
-                                    $stats = bebeats_get_post_stats($post->id, $current_user_id, $wpdb, $reactions_table);
+                                    $stats = isset($carousel_stats[$post->id]) ? $carousel_stats[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
                                     bebeats_render_carousel_post($post, $stats, $current_user_id);
                                 endforeach; ?>
                             </div>

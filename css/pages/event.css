@@ -177,3 +177,11 @@ body.mode-orange .event-filters .filter-btn.filter-btn-active {
         height: 200px;
     }
 }
+
+.event-artist {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bebeats-accent);
+    margin: 0 0 0.5rem;
+}

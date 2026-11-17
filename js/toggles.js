@@ -93,6 +93,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Fonction pour appliquer le thème clair/sombre
+function applyTheme(isLight) {
+    const html = document.documentElement;
+
+    if (isLight) {
+        html.setAttribute('data-theme', 'light');
+    } else {
+        html.setAttribute('data-theme', 'dark');
+    }
+}
+
+// Appliquer le thème sauvegardé immédiatement
+(function() {
+    applyTheme(localStorage.getItem('bebeats-theme') === 'light');
+})();
+
 // Fonction pour gérer les changements de chaque toggle
 function handleToggleChange(toggleId, isChecked) {
     switch(toggleId) {
@@ -101,6 +117,10 @@ function handleToggleChange(toggleId, isChecked) {
             break;
         case 'toggle-langues':
             // Ajouter ici la logique spécifique pour les langues
+            break;
+        case 'toggle-theme':
+            applyTheme(isChecked);
+            localStorage.setItem('bebeats-theme', isChecked ? 'light' : 'dark');
             break;
         case 'toggle-mode':
             // Changer le mode de couleur des boutons

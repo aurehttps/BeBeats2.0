@@ -240,6 +240,76 @@ function bebeats_handle_validated_upload($file, $allowed_mimes, $max_size = 2097
 }
 
 /**
+ * Statistiques de reactions pour un ensemble de posts en un minimum de requetes.
+ * Retourne un tableau [post_id] => array(likes_count, reposts_count, comments_count, user_liked, user_favorited, user_reposted)
+ */
+function bebeats_get_reactions_stats($post_ids, $current_user_id = 0) {
+    global $wpdb;
+    $stats = array();
+
+    if (empty($post_ids)) {
+        return $stats;
+    }
+
+    $table = $wpdb->prefix . 'bebeats_post_reactions';
+    $ids = array_map('intval', (array) $post_ids);
+    $ids = array_values(array_filter($ids));
+    if (empty($ids)) {
+        return $stats;
+    }
+    $in = implode(',', $ids);
+
+    foreach ($ids as $id) {
+        $stats[$id] = array(
+            'likes_count' => 0,
+            'reposts_count' => 0,
+            'comments_count' => 0,
+            'user_liked' => false,
+            'user_favorited' => false,
+            'user_reposted' => false
+        );
+    }
+
+    $rows = $wpdb->get_results("
+        SELECT post_id,
+            COUNT(DISTINCT CASE WHEN reaction_type = 'like' THEN user_id END) as likes,
+            COUNT(DISTINCT CASE WHEN reaction_type = 'repost' THEN user_id END) as reposts,
+            COUNT(DISTINCT CASE WHEN reaction_type = 'comment' AND (parent_comment_id IS NULL OR parent_comment_id = 0) THEN id END) as comments
+        FROM $table
+        WHERE post_id IN ($in)
+        GROUP BY post_id
+    ");
+
+    foreach ((array) $rows as $r) {
+        $stats[(int) $r->post_id]['likes_count'] = (int) $r->likes;
+        $stats[(int) $r->post_id]['reposts_count'] = (int) $r->reposts;
+        $stats[(int) $r->post_id]['comments_count'] = (int) $r->comments;
+    }
+
+    if ($current_user_id > 0) {
+        $urows = $wpdb->get_results("
+            SELECT post_id, reaction_type
+            FROM $table
+            WHERE user_id = " . intval($current_user_id) . "
+              AND post_id IN ($in)
+              AND reaction_type IN ('like', 'favorite', 'repost')
+        ");
+
+        foreach ((array) $urows as $r) {
+            if ($r->reaction_type === 'like') {
+                $stats[(int) $r->post_id]['user_liked'] = true;
+            } elseif ($r->reaction_type === 'favorite') {
+                $stats[(int) $r->post_id]['user_favorited'] = true;
+            } elseif ($r->reaction_type === 'repost') {
+                $stats[(int) $r->post_id]['user_reposted'] = true;
+            }
+        }
+    }
+
+    return $stats;
+}
+
+/**
  * Traitement du formulaire de connexion
  */
 function bebeats_handle_login() {
@@ -448,12 +518,16 @@ function bebeats_create_post_reactions_table() {
 }
 
 /**
- * Traitement de l'étape 1 d'inscription Fan
+ * Traitement de l'étape 1 d'inscription (Fan et Artiste) : identifiants
  */
-function bebeats_handle_register_fan_step1() {
+function bebeats_handle_register_step1($user_type) {
+    $base_url = '/inscription-' . $user_type . '-step1';
+    $nonce_field = 'bebeats_register_' . $user_type . '_step1_nonce';
+    $nonce_action = 'bebeats_register_' . $user_type . '_step1_action';
+    
     // Vérifier le nonce
-    if (!isset($_POST['bebeats_register_fan_step1_nonce']) || !wp_verify_nonce($_POST['bebeats_register_fan_step1_nonce'], 'bebeats_register_fan_step1_action')) {
-        wp_redirect(home_url('/inscription-fan-step1?error=1'));
+    if (!isset($_POST[$nonce_field]) || !wp_verify_nonce($_POST[$nonce_field], $nonce_action)) {
+        wp_redirect(home_url($base_url . '?error=1'));
         exit;
     }
     
@@ -464,30 +538,27 @@ function bebeats_handle_register_fan_step1() {
     
     // Validation
     if (empty($email) || empty($username) || empty($password)) {
-        wp_redirect(home_url('/inscription-fan-step1?error=1'));
+        wp_redirect(home_url($base_url . '?error=1'));
         exit;
     }
     
     // Vérifier si l'email existe déjà
     if (email_exists($email)) {
-        wp_redirect(home_url('/inscription-fan-step1?error=2'));
+        wp_redirect(home_url($base_url . '?error=2'));
         exit;
     }
     
     // Vérifier si le username existe déjà
     if (username_exists($username)) {
-        wp_redirect(home_url('/inscription-fan-step1?error=3'));
+        wp_redirect(home_url($base_url . '?error=3'));
         exit;
     }
     
     // Générer une clé unique pour cette inscription
     $registration_key = wp_generate_password(32, false);
     
-    // Stocker les données dans la base de données
     global $wpdb;
     $table_name = $wpdb->prefix . 'bebeats_registrations';
-    
-    // Créer la table si elle n'existe pas
     bebeats_create_registration_table();
     
     // Stocker le mot de passe haché (jamais en clair ni réversible)
@@ -497,17 +568,17 @@ function bebeats_handle_register_fan_step1() {
         $table_name,
         array(
             'registration_key' => $registration_key,
-            'user_type' => 'fan',
+            'user_type' => $user_type,
             'email' => $email,
             'username' => $username,
-            'password_hash' => $password_encoded, // Stockage temporaire sécurisé
+            'password_hash' => $password_encoded,
             'step_completed' => 1
         ),
         array('%s', '%s', '%s', '%s', '%s', '%d')
     );
     
     if ($result === false) {
-        wp_redirect(home_url('/inscription-fan-step1?error=1'));
+        wp_redirect(home_url($base_url . '?error=1'));
         exit;
     }
     
@@ -515,19 +586,33 @@ function bebeats_handle_register_fan_step1() {
     setcookie('bebeats_registration_key', $registration_key, time() + 3600, '/');
     
     // Rediriger vers l'étape 2
-    wp_redirect(home_url('/inscription-fan-step2?key=' . urlencode($registration_key)));
+    wp_redirect(home_url('/inscription-' . $user_type . '-step2?key=' . urlencode($registration_key)));
     exit;
+}
+
+function bebeats_handle_register_fan_step1() {
+    bebeats_handle_register_step1('fan');
+}
+
+function bebeats_handle_register_artiste_step1() {
+    bebeats_handle_register_step1('artiste');
 }
 add_action('admin_post_bebeats_register_fan_step1', 'bebeats_handle_register_fan_step1');
 add_action('admin_post_nopriv_bebeats_register_fan_step1', 'bebeats_handle_register_fan_step1');
+add_action('admin_post_bebeats_register_artiste_step1', 'bebeats_handle_register_artiste_step1');
+add_action('admin_post_nopriv_bebeats_register_artiste_step1', 'bebeats_handle_register_artiste_step1');
 
 /**
- * Traitement de l'étape 2 d'inscription Fan (genres musicaux)
+ * Traitement de l'étape 2 d'inscription (Fan et Artiste) : genres musicaux
  */
-function bebeats_handle_register_fan_step2() {
+function bebeats_handle_register_step2($user_type, $min_genres, $max_genres) {
+    $base_url = '/inscription-' . $user_type . '-step2';
+    $nonce_field = 'bebeats_register_' . $user_type . '_step2_nonce';
+    $nonce_action = 'bebeats_register_' . $user_type . '_step2_action';
+    
     // Vérifier le nonce
-    if (!isset($_POST['bebeats_register_fan_step2_nonce']) || !wp_verify_nonce($_POST['bebeats_register_fan_step2_nonce'], 'bebeats_register_fan_step2_action')) {
-        wp_redirect(home_url('/inscription-fan-step2?error=1'));
+    if (!isset($_POST[$nonce_field]) || !wp_verify_nonce($_POST[$nonce_field], $nonce_action)) {
+        wp_redirect(home_url($base_url . '?error=1'));
         exit;
     }
     
@@ -542,29 +627,26 @@ function bebeats_handle_register_fan_step2() {
     }
     
     if (empty($registration_key)) {
-        wp_redirect(home_url('/inscription-fan-step1?error=1'));
+        wp_redirect(home_url('/inscription-' . $user_type . '-step1?error=1'));
         exit;
     }
     
     // Récupérer les genres sélectionnés
     $genres = isset($_POST['genres']) ? array_map('sanitize_text_field', $_POST['genres']) : array();
     
-    // Vérifier qu'exactement 2 genres sont sélectionnés
-    if (count($genres) !== 2) {
-        wp_redirect(home_url('/inscription-fan-step2?key=' . urlencode($registration_key) . '&error=1'));
+    // Vérifier le nombre de genres requis
+    if (count($genres) < $min_genres || count($genres) > $max_genres) {
+        wp_redirect(home_url($base_url . '?key=' . urlencode($registration_key) . '&error=1'));
         exit;
     }
     
-    // Stocker les genres dans la base de données
     global $wpdb;
     $table_name = $wpdb->prefix . 'bebeats_registrations';
-    
-    $genres_json = json_encode($genres);
     
     $result = $wpdb->update(
         $table_name,
         array(
-            'genres' => $genres_json,
+            'genres' => json_encode($genres),
             'step_completed' => 2
         ),
         array('registration_key' => $registration_key),
@@ -573,16 +655,26 @@ function bebeats_handle_register_fan_step2() {
     );
     
     if ($result === false) {
-        wp_redirect(home_url('/inscription-fan-step2?key=' . urlencode($registration_key) . '&error=1'));
+        wp_redirect(home_url($base_url . '?key=' . urlencode($registration_key) . '&error=1'));
         exit;
     }
     
     // Rediriger vers l'étape 3
-    wp_redirect(home_url('/inscription-fan-step3?key=' . urlencode($registration_key)));
+    wp_redirect(home_url('/inscription-' . $user_type . '-step3?key=' . urlencode($registration_key)));
     exit;
+}
+
+function bebeats_handle_register_fan_step2() {
+    bebeats_handle_register_step2('fan', 2, 2);
+}
+
+function bebeats_handle_register_artiste_step2() {
+    bebeats_handle_register_step2('artiste', 1, 2);
 }
 add_action('admin_post_bebeats_register_fan_step2', 'bebeats_handle_register_fan_step2');
 add_action('admin_post_nopriv_bebeats_register_fan_step2', 'bebeats_handle_register_fan_step2');
+add_action('admin_post_bebeats_register_artiste_step2', 'bebeats_handle_register_artiste_step2');
+add_action('admin_post_nopriv_bebeats_register_artiste_step2', 'bebeats_handle_register_artiste_step2');
 
 /**
  * Traitement de l'étape 3 d'inscription Fan (profil)
@@ -731,142 +823,7 @@ function bebeats_handle_register_fan_step3() {
 add_action('admin_post_bebeats_register_fan_step3', 'bebeats_handle_register_fan_step3');
 add_action('admin_post_nopriv_bebeats_register_fan_step3', 'bebeats_handle_register_fan_step3');
 
-/**
- * Traitement de l'étape 1 d'inscription Artiste
- */
-function bebeats_handle_register_artiste_step1() {
-    // Vérifier le nonce
-    if (!isset($_POST['bebeats_register_artiste_step1_nonce']) || !wp_verify_nonce($_POST['bebeats_register_artiste_step1_nonce'], 'bebeats_register_artiste_step1_action')) {
-        wp_redirect(home_url('/inscription-artiste-step1?error=1'));
-        exit;
-    }
-    
-    // Récupérer les données
-    $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
-    $username = isset($_POST['username']) ? sanitize_user($_POST['username']) : '';
-    $password = isset($_POST['password']) ? $_POST['password'] : '';
-    
-    // Validation
-    if (empty($email) || empty($username) || empty($password)) {
-        wp_redirect(home_url('/inscription-artiste-step1?error=1'));
-        exit;
-    }
-    
-    // Vérifier si l'email existe déjà
-    if (email_exists($email)) {
-        wp_redirect(home_url('/inscription-artiste-step1?error=2'));
-        exit;
-    }
-    
-    // Vérifier si le username existe déjà
-    if (username_exists($username)) {
-        wp_redirect(home_url('/inscription-artiste-step1?error=3'));
-        exit;
-    }
-    
-    // Générer une clé unique pour cette inscription
-    $registration_key = wp_generate_password(32, false);
-    
-    // Stocker les données dans la base de données
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'bebeats_registrations';
-    
-    // Créer la table si elle n'existe pas
-    bebeats_create_registration_table();
-    
-    // Stocker le mot de passe haché (jamais en clair ni réversible)
-    $password_encoded = wp_hash_password($password);
-    
-    $result = $wpdb->insert(
-        $table_name,
-        array(
-            'registration_key' => $registration_key,
-            'user_type' => 'artiste',
-            'email' => $email,
-            'username' => $username,
-            'password_hash' => $password_encoded,
-            'step_completed' => 1
-        ),
-        array('%s', '%s', '%s', '%s', '%s', '%d')
-    );
-    
-    if ($result === false) {
-        wp_redirect(home_url('/inscription-artiste-step1?error=1'));
-        exit;
-    }
-    
-    // Stocker la clé dans un cookie pour les étapes suivantes
-    setcookie('bebeats_registration_key', $registration_key, time() + 3600, '/');
-    
-    // Rediriger vers l'étape 2
-    wp_redirect(home_url('/inscription-artiste-step2?key=' . urlencode($registration_key)));
-    exit;
-}
-add_action('admin_post_bebeats_register_artiste_step1', 'bebeats_handle_register_artiste_step1');
-add_action('admin_post_nopriv_bebeats_register_artiste_step1', 'bebeats_handle_register_artiste_step1');
 
-/**
- * Traitement de l'étape 2 d'inscription Artiste (genres musicaux)
- */
-function bebeats_handle_register_artiste_step2() {
-    // Vérifier le nonce
-    if (!isset($_POST['bebeats_register_artiste_step2_nonce']) || !wp_verify_nonce($_POST['bebeats_register_artiste_step2_nonce'], 'bebeats_register_artiste_step2_action')) {
-        wp_redirect(home_url('/inscription-artiste-step2?error=1'));
-        exit;
-    }
-    
-    // Récupérer la clé d'inscription
-    $registration_key = '';
-    if (isset($_POST['registration_key']) && !empty($_POST['registration_key'])) {
-        $registration_key = sanitize_text_field($_POST['registration_key']);
-    } elseif (isset($_GET['key']) && !empty($_GET['key'])) {
-        $registration_key = sanitize_text_field($_GET['key']);
-    } elseif (isset($_COOKIE['bebeats_registration_key']) && !empty($_COOKIE['bebeats_registration_key'])) {
-        $registration_key = sanitize_text_field($_COOKIE['bebeats_registration_key']);
-    }
-    
-    if (empty($registration_key)) {
-        wp_redirect(home_url('/inscription-artiste-step1?error=1'));
-        exit;
-    }
-    
-    // Récupérer les genres sélectionnés
-    $genres = isset($_POST['genres']) ? array_map('sanitize_text_field', $_POST['genres']) : array();
-    
-    // Vérifier qu'1 ou 2 genres sont sélectionnés
-    if (count($genres) < 1 || count($genres) > 2) {
-        wp_redirect(home_url('/inscription-artiste-step2?key=' . urlencode($registration_key) . '&error=1'));
-        exit;
-    }
-    
-    // Stocker les genres dans la base de données
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'bebeats_registrations';
-    
-    $genres_json = json_encode($genres);
-    
-    $result = $wpdb->update(
-        $table_name,
-        array(
-            'genres' => $genres_json,
-            'step_completed' => 2
-        ),
-        array('registration_key' => $registration_key),
-        array('%s', '%d'),
-        array('%s')
-    );
-    
-    if ($result === false) {
-        wp_redirect(home_url('/inscription-artiste-step2?key=' . urlencode($registration_key) . '&error=1'));
-        exit;
-    }
-    
-    // Rediriger vers l'étape 3
-    wp_redirect(home_url('/inscription-artiste-step3?key=' . urlencode($registration_key)));
-    exit;
-}
-add_action('admin_post_bebeats_register_artiste_step2', 'bebeats_handle_register_artiste_step2');
-add_action('admin_post_nopriv_bebeats_register_artiste_step2', 'bebeats_handle_register_artiste_step2');
 
 /**
  * Traitement de l'étape 3 d'inscription Artiste (profil)
@@ -1307,93 +1264,6 @@ function bebeats_handle_create_post() {
     if ($result === false) {
         wp_redirect(home_url('/contribuer?error=1'));
         exit;
-    }
-    
-    $bebeats_post_id = $wpdb->insert_id;
-    
-    // Vérifier que le post a bien été inséré en le récupérant
-    $verify_post = $wpdb->get_row($wpdb->prepare(
-        "SELECT * FROM $table_name WHERE id = %d",
-        $bebeats_post_id
-    ));
-    if ($verify_post) {
-    } else {
-    }
-    
-    // Créer aussi un post WordPress pour qu'il apparaisse dans le menu Posts
-    // Utiliser le titre d'évènement dédié pour les posts de type "event" si disponible
-    if ($post_type === 'event' && !empty($event_title)) {
-        $wp_post_title = $event_title;
-    } else {
-        $wp_post_title = !empty($content) ? wp_trim_words($content, 10, '...') : 'Post BeBeats - ' . ucfirst($post_type);
-    }
-    if (empty($wp_post_title)) {
-        $wp_post_title = 'Post BeBeats - ' . date('Y-m-d H:i:s');
-    }
-    
-    $wp_post_content = '';
-    if (!empty($content)) {
-        $wp_post_content .= '<p>' . nl2br(esc_html($content)) . '</p>';
-    }
-    if (!empty($media_url)) {
-        if ($media_type === 'image') {
-            $wp_post_content .= '<p><img src="' . esc_url($media_url) . '" alt="Média du post" style="max-width: 100%; height: auto;" /></p>';
-        } elseif ($media_type === 'video') {
-            $wp_post_content .= '<p><video src="' . esc_url($media_url) . '" controls style="max-width: 100%; height: auto;"></video></p>';
-        } elseif ($media_type === 'audio') {
-            $wp_post_content .= '<p><audio src="' . esc_url($media_url) . '" controls style="width: 100%;"></audio></p>';
-        }
-    }
-    
-    // Utiliser wp_set_current_user pour que wp_insert_post reconnaisse les permissions
-    wp_set_current_user($user_id);
-    
-    $wp_post_data = array(
-        'post_title'    => $wp_post_title,
-        'post_content'  => $wp_post_content,
-        'post_status'   => 'publish',
-        'post_author'   => $user_id,
-        'post_type'     => 'post',
-        'post_date'     => current_time('mysql')
-    );
-    
-    
-    // Désactiver temporairement les filtres qui pourraient bloquer la création
-    remove_action('save_post', 'wp_save_post_revision', 10);
-    
-    $wp_post_id = wp_insert_post($wp_post_data, true);
-    
-    // Réactiver les filtres
-    add_action('save_post', 'wp_save_post_revision', 10);
-    
-    if ($wp_post_id && !is_wp_error($wp_post_id)) {
-        // Sauvegarder les métadonnées du post BeBeats dans les meta du post WordPress
-        update_post_meta($wp_post_id, 'bebeats_post_id', $bebeats_post_id);
-        update_post_meta($wp_post_id, 'bebeats_post_type', $post_type);
-        if (!empty($media_url)) {
-            update_post_meta($wp_post_id, 'bebeats_media_url', $media_url);
-        }
-        if (!empty($media_type)) {
-            update_post_meta($wp_post_id, 'bebeats_media_type', $media_type);
-        }
-        update_post_meta($wp_post_id, 'bebeats_allow_comments', $allow_comments);
-        update_post_meta($wp_post_id, 'bebeats_allow_repost', $allow_repost);
-        update_post_meta($wp_post_id, 'bebeats_show_likes', $show_likes);
-        
-    } else {
-        $error_msg = is_wp_error($wp_post_id) ? $wp_post_id->get_error_message() : 'Erreur inconnue';
-        if (is_wp_error($wp_post_id)) {
-        }
-    }
-    
-    // Vérifier une dernière fois que le post existe dans la table
-    $final_check = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $table_name WHERE id = %d",
-        $bebeats_post_id
-    ));
-    
-    if ($final_check > 0) {
-    } else {
     }
     
     // Rediriger vers la page contribuer avec un message de succès

@@ -17,54 +17,6 @@ global $wpdb;
 $posts_table = $wpdb->prefix . 'bebeats_posts';
 $reactions_table = $wpdb->prefix . 'bebeats_post_reactions';
 
-// Fonction helper pour récupérer les statistiques d'un post
-function bebeats_get_post_stats($post_id, $current_user_id, $wpdb, $reactions_table) {
-    $likes_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'like'",
-        $post_id
-    ));
-    
-    $comments_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'comment' AND (parent_comment_id IS NULL OR parent_comment_id = 0)",
-        $post_id
-    ));
-    
-    $reposts_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'repost'",
-        $post_id
-    ));
-    
-    $user_liked = false;
-    $user_favorited = false;
-    $user_reposted = false;
-    
-    if ($current_user_id > 0) {
-        $user_liked = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'like'",
-            $post_id, $current_user_id
-        )) > 0;
-        
-        $user_favorited = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'favorite'",
-            $post_id, $current_user_id
-        )) > 0;
-        
-        $user_reposted = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'repost'",
-            $post_id, $current_user_id
-        )) > 0;
-    }
-    
-    return array(
-        'likes_count' => $likes_count,
-        'comments_count' => $comments_count,
-        'reposts_count' => $reposts_count,
-        'user_liked' => $user_liked,
-        'user_favorited' => $user_favorited,
-        'user_reposted' => $user_reposted
-    );
-}
-
 // Fonction helper pour afficher un post dans les résultats de recherche
 function bebeats_render_search_post($post, $stats, $current_user_id) {
     $time_ago = human_time_diff(strtotime($post->created_at), current_time('timestamp'));
@@ -162,6 +114,8 @@ if (!empty($search_term)) {
             $post->profile_photo = get_avatar_url($post->user_id, array('size' => 60));
         }
     }
+    
+    $stats_map = bebeats_get_reactions_stats(wp_list_pluck($search_results, 'id'), $current_user_id);
 }
 ?>
 
@@ -180,7 +134,7 @@ if (!empty($search_term)) {
             <?php if (!empty($search_term) && !empty($search_results)): ?>
                 <div class="search-results-list">
                     <?php foreach ($search_results as $post): 
-                        $stats = bebeats_get_post_stats($post->id, $current_user_id, $wpdb, $reactions_table);
+                        $stats = isset($stats_map[$post->id]) ? $stats_map[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
                         bebeats_render_search_post($post, $stats, $current_user_id);
                     endforeach; ?>
                 </div>

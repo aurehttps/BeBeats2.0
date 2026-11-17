@@ -58,18 +58,21 @@ $current_user_id = is_user_logged_in() ? get_current_user_id() : 0;
         } else {
         }
         
+        $stats_map = bebeats_get_reactions_stats(wp_list_pluck($posts, 'id'), $current_user_id);
+        
         if (empty($posts)): ?>
             <div class="feed-empty glassmorphism">
                 <p>Aucun post pour le moment. Soyez le premier à publier !</p>
             </div>
         <?php else: ?>
             <?php foreach ($posts as $post): 
-                // Récupérer les réactions pour ce post
-                // IMPORTANT: Utiliser COUNT(DISTINCT user_id) pour s'assurer qu'un utilisateur ne compte qu'une fois
-                $likes_count = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'like'",
-                    $post->id
-                ));
+                // Statistiques du post (pré-calculées via bebeats_get_reactions_stats)
+                $stats = isset($stats_map[$post->id]) ? $stats_map[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
+                $likes_count = $stats['likes_count'];
+                $reposts_count = $stats['reposts_count'];
+                $user_liked = $stats['user_liked'];
+                $user_favorited = $stats['user_favorited'];
+                $user_reposted = $stats['user_reposted'];
                 
                 $comments = $wpdb->get_results($wpdb->prepare(
                     "SELECT r.*, u.display_name, u.user_login,
@@ -82,34 +85,7 @@ $current_user_id = is_user_logged_in() ? get_current_user_id() : 0;
                     $post->id
                 ));
                 
-                $comments_count = count($comments);
-                
-                $reposts_count = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'repost'",
-                    $post->id
-                ));
-                
-                // Vérifier si l'utilisateur actuel a liké/favorisé/reposté ce post
-                $user_liked = false;
-                $user_favorited = false;
-                $user_reposted = false;
-                
-                if ($current_user_id > 0) {
-                    $user_liked = $wpdb->get_var($wpdb->prepare(
-                        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'like'",
-                        $post->id, $current_user_id
-                    )) > 0;
-                    
-                    $user_favorited = $wpdb->get_var($wpdb->prepare(
-                        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'favorite'",
-                        $post->id, $current_user_id
-                    )) > 0;
-                    
-                    $user_reposted = $wpdb->get_var($wpdb->prepare(
-                        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'repost'",
-                        $post->id, $current_user_id
-                    )) > 0;
-                }
+                $comments_count = $stats['comments_count'];
                 
                 // Photo de profil
                 $profile_photo = !empty($post->profile_photo) ? $post->profile_photo : get_avatar_url($post->user_id, array('size' => 60));

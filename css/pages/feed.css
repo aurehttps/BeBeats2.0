@@ -442,3 +442,25 @@ html.mode-orange .comment-like-btn.active .comment-like-icon {
         max-height: 300px;
     }
 }
+
+/* Personnes identifiees sur un post */
+.post-tagged-users {
+    margin-top: 0.5rem;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    color: var(--bebeats-text-muted);
+}
+
+.post-tagged-label {
+    color: var(--bebeats-text-muted);
+}
+
+.post-tagged-link {
+    color: var(--bebeats-accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.post-tagged-link:hover {
+    text-decoration: underline;
+}

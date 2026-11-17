@@ -717,6 +717,8 @@ function bebeats_ajax_get_notifications() {
         
         if ($r->type === 'new_post') {
             $message = sprintf('%s a publie un nouveau contenu', $actor_name);
+        } elseif ($r->type === 'tagged') {
+            $message = sprintf("%s t'a identifie dans un post", $actor_name);
         } else {
             $message = sprintf('%s a une nouvelle activite', $actor_name);
         }
@@ -1137,6 +1139,7 @@ function bebeats_create_posts_table() {
         allow_comments tinyint(1) DEFAULT 1,
         allow_repost tinyint(1) DEFAULT 1,
         show_likes tinyint(1) DEFAULT 1,
+        tagged_users varchar(500),
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
@@ -1153,7 +1156,8 @@ function bebeats_create_posts_table() {
         'allow_comments' => "ALTER TABLE $table_name ADD COLUMN allow_comments tinyint(1) DEFAULT 1 AFTER media_type",
         'allow_repost' => "ALTER TABLE $table_name ADD COLUMN allow_repost tinyint(1) DEFAULT 1 AFTER allow_comments",
         'show_likes' => "ALTER TABLE $table_name ADD COLUMN show_likes tinyint(1) DEFAULT 1 AFTER allow_repost",
-        'event_title' => "ALTER TABLE $table_name ADD COLUMN event_title varchar(255) NULL AFTER content"
+        'event_title' => "ALTER TABLE $table_name ADD COLUMN event_title varchar(255) NULL AFTER content",
+        'tagged_users' => "ALTER TABLE $table_name ADD COLUMN tagged_users varchar(500) NULL AFTER show_likes"
     );
     
     foreach ($columns_to_add as $column => $alter_sql) {
@@ -1934,6 +1938,22 @@ function bebeats_handle_create_post() {
     $allow_repost = isset($_POST['allow_repost']) ? intval($_POST['allow_repost']) : 1;
     $show_likes = isset($_POST['show_likes']) ? intval($_POST['show_likes']) : 1;
     
+    // Personnes identifiées sur le post (max 10, utilisateurs valides, pas soi-même)
+    $tagged_users = array();
+    if (isset($_POST['tagged_users'])) {
+        $raw = is_array($_POST['tagged_users']) ? $_POST['tagged_users'] : explode(',', $_POST['tagged_users']);
+        $tagged_users = array_map('intval', $raw);
+        $tagged_users = array_filter(array_unique($tagged_users));
+        $tagged_users = array_slice($tagged_users, 0, 10);
+        
+        foreach ($tagged_users as $tagged_id) {
+            if (!get_userdata($tagged_id) || (int) $tagged_id === (int) $user_id) {
+                $tagged_users = array_diff($tagged_users, array($tagged_id));
+            }
+        }
+    }
+    $tagged_users_str = !empty($tagged_users) ? implode(',', $tagged_users) : '';
+    
     // Insérer le post dans la base de données
     global $wpdb;
     $table_name = $wpdb->prefix . 'bebeats_posts';
@@ -1954,10 +1974,11 @@ function bebeats_handle_create_post() {
         'media_type' => $media_type,
         'allow_comments' => $allow_comments,
         'allow_repost' => $allow_repost,
-        'show_likes' => $show_likes
+        'show_likes' => $show_likes,
+        'tagged_users' => $tagged_users_str
     );
 
-    $insert_formats = array('%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d');
+    $insert_formats = array('%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s');
 
     // Enregistrer le titre d'évènement séparément si fourni
     if (!empty($event_title)) {
@@ -1984,6 +2005,23 @@ function bebeats_handle_create_post() {
     
     // Gamification : +35 points par publication
     bebeats_award_points($user_id, 35);
+    
+    // Notifier les personnes identifiées sur le post
+    if (!empty($tagged_users)) {
+        global $wpdb;
+        $notif_table = $wpdb->prefix . 'bebeats_notifications';
+        $author = get_userdata($user_id);
+        $author_name = $author ? ($author->display_name ?: $author->user_login) : '';
+        
+        foreach ($tagged_users as $tagged_id) {
+            $wpdb->insert($notif_table, array(
+                'user_id' => $tagged_id,
+                'actor_id' => $user_id,
+                'type' => 'tagged',
+                'post_id' => $wpdb->insert_id
+            ), array('%d', '%d', '%s', '%d'));
+        }
+    }
     
     // Rediriger vers la page contribuer avec un message de succès
     wp_redirect(home_url('/contribuer?success=1'));

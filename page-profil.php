@@ -40,16 +40,19 @@ if (empty($profile_photo)) {
     $profile_photo = get_avatar_url($viewed_user_id, array('size' => 200));
 }
 
-// Déterminer le badge selon le type d'utilisateur,
-// complete par le titre gamification selectionne le cas echeant
+// Titre epingle au-dessus de la photo (sans le niveau),
+// sinon type de compte par defaut
 $badge = ($user_type === 'artiste') ? 'Artiste' : 'Fan';
 $selected_badge_key = get_user_meta($viewed_user_id, 'bebeats_selected_badge', true);
 if (!empty($selected_badge_key)) {
     $title_catalog = bebeats_get_title_catalog();
     if (isset($title_catalog[$selected_badge_key])) {
-        $badge = $title_catalog[$selected_badge_key]['display'];
+        $badge = $title_catalog[$selected_badge_key]['title'];
     }
 }
+
+// Niveau gamification de l'utilisateur consulte (affiche a cote du pseudo)
+$viewed_user_level = bebeats_get_level_from_points(bebeats_get_user_points($viewed_user_id));
 
 // Suivi : compteurs et état
 global $wpdb;
@@ -107,7 +110,10 @@ if (!empty($genres) && is_array($genres)) {
             
             <!-- Colonne d'infos utilisateur : pseudo, stats, actions, description -->
             <div class="profile-user-info">
-                <h1 class="profile-username"><?php echo esc_html($profile_user->display_name ?: $profile_user->user_login); ?></h1>
+                <h1 class="profile-username">
+                    <?php echo esc_html($profile_user->display_name ?: $profile_user->user_login); ?>
+                    <span class="profile-level-badge">Niveau <?php echo esc_html($viewed_user_level); ?></span>
+                </h1>
                 
                 <div class="profile-stats-row">
                     <span class="profile-stat">

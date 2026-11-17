@@ -74,6 +74,17 @@ function bebeats_enqueue_scripts() {
     // Enqueue Bootstrap JS
     wp_enqueue_script('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js', array(), '5.3.2', true);
     
+    // Suivi d'artistes + notifications (utilisateur connecte)
+    if (is_user_logged_in()) {
+        wp_enqueue_script('bebeats-social', get_template_directory_uri() . '/js/social.js', array('jquery'), '1.0', true);
+        wp_localize_script('bebeats-social', 'bebeatsSocial', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'followNonce' => wp_create_nonce('bebeats_follow_action'),
+            'notificationsNonce' => wp_create_nonce('bebeats_notifications_action'),
+            'isLoggedIn' => true
+        ));
+    }
+    
     // Enqueue custom scripts
     wp_enqueue_script('bebeats-search', get_template_directory_uri() . '/js/search.js', array('jquery'), '1.0', true);
     
@@ -469,6 +480,226 @@ function bebeats_create_default_pages() {
     flush_rewrite_rules();
 }
 add_action('after_switch_theme', 'bebeats_create_default_pages');
+
+/**
+ * Suivi d'artistes et notifications
+ */
+
+function bebeats_create_follows_table() {
+    global $wpdb;
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    $table_name = $wpdb->prefix . 'bebeats_follows';
+    $charset_collate = $wpdb->get_charset_collate();
+    
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        follower_id bigint(20) NOT NULL,
+        artist_id bigint(20) NOT NULL,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY unique_follow (follower_id, artist_id),
+        KEY artist_id (artist_id)
+    ) $charset_collate;";
+    dbDelta($sql);
+}
+
+function bebeats_create_notifications_table() {
+    global $wpdb;
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    $table_name = $wpdb->prefix . 'bebeats_notifications';
+    $charset_collate = $wpdb->get_charset_collate();
+    
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        user_id bigint(20) NOT NULL,
+        actor_id bigint(20) NOT NULL,
+        type varchar(30) NOT NULL DEFAULT 'new_post',
+        post_id bigint(20) DEFAULT NULL,
+        is_read tinyint(1) DEFAULT 0,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY user_id (user_id, is_read),
+        KEY created_at (created_at)
+    ) $charset_collate;";
+    dbDelta($sql);
+}
+
+// Garantir les tables sur une installation ou le theme etait deja actif
+function bebeats_ensure_social_tables() {
+    if (get_option('bebeats_social_tables_ready')) {
+        return;
+    }
+    bebeats_create_follows_table();
+    bebeats_create_notifications_table();
+    update_option('bebeats_social_tables_ready', 1);
+}
+add_action('init', 'bebeats_ensure_social_tables');
+add_action('after_switch_theme', 'bebeats_create_follows_table');
+add_action('after_switch_theme', 'bebeats_create_notifications_table');
+
+/**
+ * Suivre / ne plus suivre un artiste (AJAX)
+ */
+function bebeats_ajax_toggle_follow() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Connexion requise'));
+    }
+    
+    check_ajax_referer('bebeats_follow_action', 'nonce');
+    
+    $current_user_id = get_current_user_id();
+    $artist_id = isset($_POST['artist_id']) ? intval($_POST['artist_id']) : 0;
+    
+    if ($artist_id <= 0 || $artist_id === $current_user_id) {
+        wp_send_json_error(array('message' => 'Requete invalide'));
+    }
+    
+    $artist = get_userdata($artist_id);
+    if (!$artist || get_user_meta($artist_id, 'bebeats_user_type', true) !== 'artiste') {
+        wp_send_json_error(array('message' => 'Cet utilisateur n\'est pas un artiste'));
+    }
+    
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'bebeats_follows';
+    
+    $existing = $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM $table_name WHERE follower_id = %d AND artist_id = %d",
+        $current_user_id, $artist_id
+    ));
+    
+    if ($existing) {
+        $wpdb->delete($table_name, array('id' => $existing), array('%d'));
+        $following = false;
+    } else {
+        $wpdb->insert($table_name, array(
+            'follower_id' => $current_user_id,
+            'artist_id' => $artist_id
+        ), array('%d', '%d'));
+        $following = true;
+    }
+    
+    $followers_count = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_name WHERE artist_id = %d",
+        $artist_id
+    ));
+    
+    wp_send_json_success(array(
+        'following' => $following,
+        'followers_count' => $followers_count
+    ));
+}
+add_action('wp_ajax_bebeats_toggle_follow', 'bebeats_ajax_toggle_follow');
+
+/**
+ * Notifier les followers quand un artiste publie
+ */
+function bebeats_notify_followers($artist_id, $post_id) {
+    global $wpdb;
+    $follows_table = $wpdb->prefix . 'bebeats_follows';
+    $notif_table = $wpdb->prefix . 'bebeats_notifications';
+    
+    $followers = $wpdb->get_col($wpdb->prepare(
+        "SELECT follower_id FROM $follows_table WHERE artist_id = %d LIMIT 500",
+        $artist_id
+    ));
+    
+    if (empty($followers)) {
+        return;
+    }
+    
+    $artist = get_userdata($artist_id);
+    $artist_name = $artist ? ($artist->display_name ?: $artist->user_login) : '';
+    
+    foreach ($followers as $follower_id) {
+        $wpdb->insert($notif_table, array(
+            'user_id' => $follower_id,
+            'actor_id' => $artist_id,
+            'type' => 'new_post',
+            'post_id' => $post_id
+        ), array('%d', '%d', '%s', '%d'));
+    }
+}
+
+/**
+ * Liste des notifications de l'utilisateur courant (AJAX)
+ */
+function bebeats_ajax_get_notifications() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Connexion requise'));
+    }
+    
+    check_ajax_referer('bebeats_notifications_action', 'nonce');
+    
+    global $wpdb;
+    $current_user_id = get_current_user_id();
+    $table = $wpdb->prefix . 'bebeats_notifications';
+    
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT n.*, u.display_name, u.user_login
+         FROM $table n
+         LEFT JOIN {$wpdb->users} u ON n.actor_id = u.ID
+         WHERE n.user_id = %d
+         ORDER BY n.created_at DESC
+         LIMIT 20",
+        $current_user_id
+    ));
+    
+    $unread = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table WHERE user_id = %d AND is_read = 0",
+        $current_user_id
+    ));
+    
+    $items = array();
+    foreach ((array) $rows as $r) {
+        $actor_name = $r->display_name ?: $r->user_login;
+        $link = home_url('/feed-page#post-' . $r->post_id);
+        
+        if ($r->type === 'new_post') {
+            $message = sprintf('%s a publie un nouveau contenu', $actor_name);
+        } else {
+            $message = sprintf('%s a une nouvelle activite', $actor_name);
+        }
+        
+        $items[] = array(
+            'id' => (int) $r->id,
+            'message' => $message,
+            'link' => $link,
+            'is_read' => (bool) $r->is_read,
+            'time' => human_time_diff(strtotime($r->created_at), current_time('timestamp'))
+        );
+    }
+    
+    wp_send_json_success(array(
+        'notifications' => $items,
+        'unread' => $unread
+    ));
+}
+add_action('wp_ajax_bebeats_get_notifications', 'bebeats_ajax_get_notifications');
+
+/**
+ * Marquer toutes les notifications comme lues (AJAX)
+ */
+function bebeats_ajax_mark_notifications_read() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Connexion requise'));
+    }
+    
+    check_ajax_referer('bebeats_notifications_action', 'nonce');
+    
+    global $wpdb;
+    $table = $wpdb->prefix . 'bebeats_notifications';
+    
+    $wpdb->update(
+        $table,
+        array('is_read' => 1),
+        array('user_id' => get_current_user_id()),
+        array('%d'),
+        array('%d')
+    );
+    
+    wp_send_json_success(array('unread' => 0));
+}
+add_action('wp_ajax_bebeats_mark_notifications_read', 'bebeats_ajax_mark_notifications_read');
 
 add_action('after_switch_theme', 'bebeats_create_registration_table');
 add_action('after_switch_theme', 'bebeats_create_posts_table');
@@ -1334,6 +1565,11 @@ function bebeats_handle_create_post() {
     if ($result === false) {
         wp_redirect(home_url('/contribuer?error=1'));
         exit;
+    }
+    
+    // Notifier les followers si l'auteur est un artiste
+    if (get_user_meta($user_id, 'bebeats_user_type', true) === 'artiste') {
+        bebeats_notify_followers($user_id, $wpdb->insert_id);
     }
     
     // Rediriger vers la page contribuer avec un message de succès

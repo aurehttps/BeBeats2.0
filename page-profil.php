@@ -58,6 +58,7 @@ $viewed_user_level = bebeats_get_level_from_points(bebeats_get_user_points($view
 global $wpdb;
 $follows_table = $wpdb->prefix . 'bebeats_follows';
 $posts_table = $wpdb->prefix . 'bebeats_posts';
+$reactions_table = $wpdb->prefix . 'bebeats_post_reactions';
 
 $followers_count = (int) $wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM $follows_table WHERE artist_id = %d",

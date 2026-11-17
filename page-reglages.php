@@ -186,51 +186,105 @@ if (is_user_logged_in()) {
                 </div>
             <?php endif; ?>
             
-            <form class="account-settings-form" method="POST" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                <input type="hidden" name="action" value="bebeats_update_account">
-                <?php wp_nonce_field('bebeats_update_account_action', 'bebeats_update_account_nonce'); ?>
-                
-                <div class="account-setting-item">
-                    <label class="profile-setting-label">Pseudo visible par les autres utilisateurs</label>
-                    <input 
-                        type="text" 
-                        name="display_name" 
-                        class="auth-input account-input" 
-                        value="<?php echo esc_attr(wp_get_current_user()->display_name); ?>"
-                        minlength="2"
-                        maxlength="40"
-                    />
+            <button type="button" class="account-info-toggle" id="account-info-toggle" aria-expanded="false">
+                <span>Informations de connexion</span>
+                <svg class="account-info-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            
+            <div class="account-info-panel" id="account-info-panel" style="display: none;">
+                <div class="account-info-grid">
+                    <div class="account-info-row">
+                        <span class="account-info-label">Pseudo affiché</span>
+                        <span class="account-info-value"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
+                    </div>
+                    <div class="account-info-row">
+                        <span class="account-info-label">Adresse mail</span>
+                        <span class="account-info-value"><?php echo esc_html(wp_get_current_user()->user_email); ?></span>
+                    </div>
+                    <div class="account-info-row">
+                        <span class="account-info-label">Mot de passe actif</span>
+                        <span class="account-info-value account-info-password">
+                            <span class="account-password-dots">••••••••</span>
+                            <span class="account-password-hint">Ton mot de passe n'est jamais affiché : il est stocké de façon irréversible.</span>
+                        </span>
+                    </div>
                 </div>
                 
-                <div class="account-setting-item">
-                    <label class="profile-setting-label">Changer mon mot de passe</label>
-                    <input 
-                        type="password" 
-                        name="current_password" 
-                        class="auth-input account-input" 
-                        placeholder="Mot de passe actuel"
-                        autocomplete="current-password"
-                    />
-                    <input 
-                        type="password" 
-                        name="new_password" 
-                        class="auth-input account-input" 
-                        placeholder="Nouveau mot de passe (laisser vide pour ne pas changer)"
-                        minlength="8"
-                        autocomplete="new-password"
-                    />
-                    <input 
-                        type="password" 
-                        name="confirm_password" 
-                        class="auth-input account-input" 
-                        placeholder="Confirmer le nouveau mot de passe"
-                        minlength="8"
-                        autocomplete="new-password"
-                    />
-                </div>
-                
-                <button type="submit" class="profile-save-btn">Enregistrer</button>
-            </form>
+                <form class="account-settings-form" method="POST" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <input type="hidden" name="action" value="bebeats_update_account">
+                    <?php wp_nonce_field('bebeats_update_account_action', 'bebeats_update_account_nonce'); ?>
+                    
+                    <div class="account-setting-item">
+                        <label class="profile-setting-label">Pseudo visible par les autres utilisateurs</label>
+                        <input 
+                            type="text" 
+                            name="display_name" 
+                            class="auth-input account-input" 
+                            value="<?php echo esc_attr(wp_get_current_user()->display_name); ?>"
+                            minlength="2"
+                            maxlength="40"
+                        />
+                    </div>
+                    
+                    <div class="account-setting-item">
+                        <label class="profile-setting-label">Changer mon mot de passe</label>
+                        <div class="account-password-field">
+                            <input 
+                                type="password" 
+                                name="current_password" 
+                                id="current_password"
+                                class="auth-input account-input" 
+                                placeholder="Mot de passe actuel"
+                                autocomplete="current-password"
+                            />
+                            <button type="button" class="password-eye-btn" data-target="current_password" aria-label="Afficher le mot de passe">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="account-password-field">
+                            <input 
+                                type="password" 
+                                name="new_password" 
+                                id="new_password"
+                                class="auth-input account-input" 
+                                placeholder="Nouveau mot de passe (laisser vide pour ne pas changer)"
+                                minlength="8"
+                                autocomplete="new-password"
+                            />
+                            <button type="button" class="password-eye-btn" data-target="new_password" aria-label="Afficher le mot de passe">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="account-password-field">
+                            <input 
+                                type="password" 
+                                name="confirm_password" 
+                                id="confirm_password"
+                                class="auth-input account-input" 
+                                placeholder="Confirmer le nouveau mot de passe"
+                                minlength="8"
+                                autocomplete="new-password"
+                            />
+                            <button type="button" class="password-eye-btn" data-target="confirm_password" aria-label="Afficher le mot de passe">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="profile-save-btn">Enregistrer</button>
+                </form>
+            </div>
             
             <form method="POST" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
                 <input type="hidden" name="action" value="bebeats_logout">

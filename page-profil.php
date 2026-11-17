@@ -102,6 +102,9 @@ if (!empty($genres) && is_array($genres)) {
                 <img src="<?php echo esc_url($profile_photo); ?>" alt="<?php echo esc_attr($profile_user->display_name); ?>" class="profile-photo">
             </div>
             
+            <!-- Titre épinglé (ou type de compte) au-dessus de la photo -->
+            <div class="profile-badge-title"><?php echo esc_html($badge); ?></div>
+            
             <!-- Colonne d'infos utilisateur : pseudo, stats, actions, description -->
             <div class="profile-user-info">
                 <h1 class="profile-username"><?php echo esc_html($profile_user->display_name ?: $profile_user->user_login); ?></h1>

@@ -41,6 +41,13 @@ function toggleFollow(btn) {
             if (countEl && response.data.followers_count !== undefined) {
                 countEl.textContent = response.data.followers_count + (response.data.followers_count > 1 ? ' abonnés' : ' abonné');
             }
+            if (following) {
+                var bell = document.querySelector('.notification-btn');
+                if (bell) {
+                    bell.classList.remove('is-hidden');
+                    refreshUnreadBadge();
+                }
+            }
         }
     }).always(function () {
         btn.disabled = false;

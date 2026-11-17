@@ -47,11 +47,19 @@
                         />
                     </form>
                     
-                    <button class="notification-btn" aria-label="Notifications" type="button">
+                    <?php if (is_user_logged_in()):
+                        global $wpdb;
+                        $follows_any = (int) $wpdb->get_var($wpdb->prepare(
+                            "SELECT COUNT(*) FROM {$wpdb->prefix}bebeats_follows WHERE follower_id = %d",
+                            get_current_user_id()
+                        ));
+                    ?>
+                    <button class="notification-btn <?php echo $follows_any ? '' : 'is-hidden'; ?>" aria-label="Notifications" type="button">
                         <svg class="notification-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                         </svg>
                     </button>
+                    <?php endif; ?>
                     
                     <button class="settings-btn-header" type="button" onclick="window.location.href='<?php echo esc_url(home_url('/reglages')); ?>'" aria-label="Réglages">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

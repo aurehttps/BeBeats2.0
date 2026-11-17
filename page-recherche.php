@@ -14,53 +14,6 @@ global $wpdb;
 $posts_table = $wpdb->prefix . 'bebeats_posts';
 $reactions_table = $wpdb->prefix . 'bebeats_post_reactions';
 
-// Fonction helper pour récupérer les statistiques d'un post
-function bebeats_get_post_stats($post_id, $current_user_id, $wpdb, $reactions_table) {
-    $likes_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'like'",
-        $post_id
-    ));
-    
-    $comments_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'comment' AND (parent_comment_id IS NULL OR parent_comment_id = 0)",
-        $post_id
-    ));
-    
-    $reposts_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(DISTINCT user_id) FROM $reactions_table WHERE post_id = %d AND reaction_type = 'repost'",
-        $post_id
-    ));
-    
-    $user_liked = false;
-    $user_favorited = false;
-    $user_reposted = false;
-    
-    if ($current_user_id > 0) {
-        $user_liked = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'like'",
-            $post_id, $current_user_id
-        )) > 0;
-        
-        $user_favorited = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'favorite'",
-            $post_id, $current_user_id
-        )) > 0;
-        
-        $user_reposted = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $reactions_table WHERE post_id = %d AND user_id = %d AND reaction_type = 'repost'",
-            $post_id, $current_user_id
-        )) > 0;
-    }
-    
-    return array(
-        'likes_count' => $likes_count,
-        'comments_count' => $comments_count,
-        'reposts_count' => $reposts_count,
-        'user_liked' => $user_liked,
-        'user_favorited' => $user_favorited,
-        'user_reposted' => $user_reposted
-    );
-}
 
 // Fonction helper pour afficher un post dans un carrousel (format compact)
 function bebeats_render_carousel_post($post, $stats, $current_user_id) {
@@ -252,7 +205,7 @@ function bebeats_render_feed_carousel_post($post, $stats, $current_user_id, $wpd
                         <div class="carousel-wrapper">
                             <div class="carousel-track" data-carousel="fanart-fav">
                                 <?php foreach ($favorite_fanart_posts as $post): 
-                                    $stats = bebeats_get_post_stats($post->id, $current_user_id, $wpdb, $reactions_table);
+                                    $stats = isset($favorite_stats[$post->id]) ? $favorite_stats[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
                                     bebeats_render_carousel_post($post, $stats, $current_user_id);
                                 endforeach; ?>
                             </div>
@@ -294,7 +247,7 @@ function bebeats_render_feed_carousel_post($post, $stats, $current_user_id, $wpd
                         <div class="carousel-wrapper">
                             <div class="carousel-track" data-carousel="audio-fav">
                                 <?php foreach ($favorite_audio_posts as $post): 
-                                    $stats = bebeats_get_post_stats($post->id, $current_user_id, $wpdb, $reactions_table);
+                                    $stats = isset($favorite_stats[$post->id]) ? $favorite_stats[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
                                     bebeats_render_carousel_post($post, $stats, $current_user_id);
                                 endforeach; ?>
                             </div>
@@ -323,6 +276,11 @@ function bebeats_render_feed_carousel_post($post, $stats, $current_user_id, $wpd
                     $current_user_id
                 )
             );
+            $favorite_stats = bebeats_get_reactions_stats(array_merge(
+                wp_list_pluck($favorite_fanart_posts, 'id'),
+                wp_list_pluck($favorite_audio_posts, 'id'),
+                wp_list_pluck($favorite_article_posts, 'id')
+            ), $current_user_id);
             
             if (!empty($favorite_article_posts)): ?>
                 <div class="profile-section glassmorphism">
@@ -336,7 +294,7 @@ function bebeats_render_feed_carousel_post($post, $stats, $current_user_id, $wpd
                         <div class="carousel-wrapper">
                             <div class="carousel-track" data-carousel="articles-fav">
                                 <?php foreach ($favorite_article_posts as $post): 
-                                    $stats = bebeats_get_post_stats($post->id, $current_user_id, $wpdb, $reactions_table);
+                                    $stats = isset($favorite_stats[$post->id]) ? $favorite_stats[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
                                     bebeats_render_carousel_post($post, $stats, $current_user_id);
                                 endforeach; ?>
                             </div>

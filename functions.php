@@ -592,8 +592,8 @@ function bebeats_ajax_toggle_follow() {
             'artist_id' => $artist_id
         ), array('%d', '%d'));
         $following = true;
-        // Gamification : +5 points par nouvel abonnement
-        bebeats_award_points($current_user_id, 5);
+        // Gamification : +50 points par nouvel abonnement
+        bebeats_award_points($current_user_id, 50);
     }
     
     $followers_count = (int) $wpdb->get_var($wpdb->prepare(
@@ -972,77 +972,118 @@ function bebeats_get_user_activity($user_id) {
 }
 
 /**
- * Catalogue des badges : cle, titre, description, icone, condition
+ * Helper : l'utilisateur courant suit-il l'auteur du post donne ?
+ * (utilise pour doubler les points de like/commentaire)
  */
-function bebeats_get_badge_catalog() {
+function bebeats_user_follows_author($user_id, $post_id) {
+    global $wpdb;
+    $posts_table = $wpdb->prefix . 'bebeats_posts';
+    $follows_table = $wpdb->prefix . 'bebeats_follows';
+    
+    $author_id = $wpdb->get_var($wpdb->prepare(
+        "SELECT user_id FROM $posts_table WHERE id = %d",
+        $post_id
+    ));
+    
+    if (!$author_id || (int) $author_id === (int) $user_id) {
+        return false;
+    }
+    
+    return (bool) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $follows_table WHERE follower_id = %d AND artist_id = %d",
+        $user_id, $author_id
+    ));
+}
+
+/**
+ * Seuils d'XP par niveau (le niveau 10 = 100 000 points, maximum actuel)
+ */
+function bebeats_get_level_thresholds() {
     return array(
-        'premier_pas' => array(
-            'title' => 'Premier pas',
-            'description' => 'Publier son premier contenu',
-            'icon' => 'footsteps',
-            'condition' => array('type' => 'posts', 'value' => 1)
+        1 => 0,
+        2 => 500,
+        3 => 2000,
+        4 => 6000,
+        5 => 15000,
+        6 => 30000,
+        7 => 50000,
+        8 => 70000,
+        9 => 85000,
+        10 => 100000
+    );
+}
+
+/**
+ * Niveau atteint pour un total d'XP donne
+ */
+function bebeats_get_level_from_points($points) {
+    $level = 1;
+    foreach (bebeats_get_level_thresholds() as $lvl => $threshold) {
+        if ($points >= $threshold) {
+            $level = $lvl;
+        }
+    }
+    return $level;
+}
+
+/**
+ * Catalogue des titres epinglables sur le profil
+ */
+function bebeats_get_title_catalog() {
+    return array(
+        'bebebeats' => array(
+            'title' => 'BebeBeats',
+            'display' => 'BebeBeats - Niveau 1',
+            'min_level' => 1,
+            'icon' => 'footsteps'
         ),
-        'voix_du_peuple' => array(
-            'title' => 'Voix du peuple',
-            'description' => 'Publier 5 contenus',
-            'icon' => 'megaphone',
-            'condition' => array('type' => 'posts', 'value' => 5)
-        ),
-        'commentateur' => array(
-            'title' => 'Commentateur',
-            'description' => 'Ecrire 10 commentaires',
-            'icon' => 'chat',
-            'condition' => array('type' => 'comments', 'value' => 10)
-        ),
-        'soutien_fidele' => array(
-            'title' => 'Soutien fidele',
-            'description' => 'Suivre 3 artistes',
-            'icon' => 'heart',
-            'condition' => array('type' => 'following', 'value' => 3)
+        'fan' => array(
+            'title' => 'Fan',
+            'display' => 'Fan - Niveau 5',
+            'min_level' => 5,
+            'icon' => 'heart'
         ),
         'super_fan' => array(
             'title' => 'Super Fan',
-            'description' => 'Atteindre 100 points',
-            'icon' => 'star',
-            'condition' => array('type' => 'points', 'value' => 100)
+            'display' => 'Super Fan - Niveau 8',
+            'min_level' => 8,
+            'icon' => 'star'
         ),
-        'veteran' => array(
-            'title' => 'Veteran BeBeats',
-            'description' => 'Atteindre 500 points',
-            'icon' => 'trophy',
-            'condition' => array('type' => 'points', 'value' => 500)
+        'fan_atik' => array(
+            'title' => 'Fan-atik',
+            'display' => 'Fan-atik - Niveau 10',
+            'min_level' => 10,
+            'icon' => 'trophy'
         )
     );
 }
 
 /**
- * Etat des badges d'un utilisateur : debloque ou non + progression
+ * Etat des titres d'un utilisateur : debloque ou non selon son niveau
  */
-function bebeats_get_user_badges($user_id) {
-    $activity = bebeats_get_user_activity($user_id);
-    $catalog = bebeats_get_badge_catalog();
+function bebeats_get_user_titles($user_id) {
+    $points = bebeats_get_user_points($user_id);
+    $level = bebeats_get_level_from_points($points);
+    $catalog = bebeats_get_title_catalog();
     $selected = get_user_meta($user_id, 'bebeats_selected_badge', true);
     
-    $badges = array();
-    foreach ($catalog as $key => $badge) {
-        $current = isset($activity[$badge['condition']['type']]) ? $activity[$badge['condition']['type']] : 0;
-        $target = (int) $badge['condition']['value'];
-        $badges[$key] = array(
-            'title' => $badge['title'],
-            'description' => $badge['description'],
-            'icon' => $badge['icon'],
-            'current' => $current,
-            'target' => $target,
-            'unlocked' => $current >= $target,
+    $titles = array();
+    foreach ($catalog as $key => $title) {
+        $titles[$key] = array(
+            'title' => $title['title'],
+            'display' => $title['display'],
+            'icon' => $title['icon'],
+            'min_level' => $title['min_level'],
+            'unlocked' => $level >= $title['min_level'],
             'selected' => ($selected === $key)
         );
     }
     
-    return $badges;
+    return $titles;
 }
 
 /**
- * Selection du titre affiche (AJAX)
+ * Selection du titre epingle sur le profil (AJAX)
  */
 function bebeats_ajax_select_badge() {
     if (!is_user_logged_in()) {
@@ -1051,22 +1092,22 @@ function bebeats_ajax_select_badge() {
     
     check_ajax_referer('bebeats_badge_action', 'nonce');
     
-    $badge_key = isset($_POST['badge']) ? sanitize_key($_POST['badge']) : '';
+    $title_key = isset($_POST['badge']) ? sanitize_key($_POST['badge']) : '';
     $user_id = get_current_user_id();
     
-    if (empty($badge_key)) {
-        // Deselection : revenir au badge par defaut
+    if (empty($title_key)) {
+        // Deselection : revenir au titre par defaut
         delete_user_meta($user_id, 'bebeats_selected_badge');
         wp_send_json_success(array('selected' => ''));
     }
     
-    $badges = bebeats_get_user_badges($user_id);
-    if (!isset($badges[$badge_key]) || !$badges[$badge_key]['unlocked']) {
-        wp_send_json_error(array('message' => 'Badge non debloque'));
+    $titles = bebeats_get_user_titles($user_id);
+    if (!isset($titles[$title_key]) || !$titles[$title_key]['unlocked']) {
+        wp_send_json_error(array('message' => 'Titre non debloque'));
     }
     
-    update_user_meta($user_id, 'bebeats_selected_badge', $badge_key);
-    wp_send_json_success(array('selected' => $badge_key));
+    update_user_meta($user_id, 'bebeats_selected_badge', $title_key);
+    wp_send_json_success(array('selected' => $title_key));
 }
 add_action('wp_ajax_bebeats_select_badge', 'bebeats_ajax_select_badge');
 
@@ -1941,8 +1982,8 @@ function bebeats_handle_create_post() {
         bebeats_notify_followers($user_id, $wpdb->insert_id);
     }
     
-    // Gamification : +10 points par publication
-    bebeats_award_points($user_id, 10);
+    // Gamification : +35 points par publication
+    bebeats_award_points($user_id, 35);
     
     // Rediriger vers la page contribuer avec un message de succès
     wp_redirect(home_url('/contribuer?success=1'));
@@ -2081,9 +2122,14 @@ function bebeats_handle_post_reaction() {
             );
             
             if ($inserted !== false) {
-                // Gamification : +1 point pour un like donne
+                // Gamification : +10 points pour un like donne,
+                // double (+20) si le post vient d'un artiste suivi
                 if ($reaction_type === 'like') {
-                    bebeats_award_points($user_id, 1);
+                    $like_points = 10;
+                    if (bebeats_user_follows_author($user_id, $post_id)) {
+                        $like_points *= 2;
+                    }
+                    bebeats_award_points($user_id, $like_points);
                 }
                 
                 // Récupérer le nouveau compteur
@@ -2209,8 +2255,13 @@ function bebeats_handle_post_reaction() {
                 );
             }
             
-            // Gamification : +2 points par commentaire publie
-            bebeats_award_points($user_id, 2);
+            // Gamification : +25 points par commentaire publie,
+            // double (+50) si le post vient d'un artiste suivi
+            $comment_points = 25;
+            if (bebeats_user_follows_author($user_id, $post_id)) {
+                $comment_points *= 2;
+            }
+            bebeats_award_points($user_id, $comment_points);
             
             wp_send_json_success(array(
                 'action' => 'added', 

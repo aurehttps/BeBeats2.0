@@ -246,7 +246,7 @@ function selectBadge(btn) {
                 btn.classList.add('is-selected');
                 var label = document.createElement('span');
                 label.className = 'succes-badge-selected-label';
-                label.textContent = 'Titre affiché';
+                label.textContent = 'Titre épinglé';
                 btn.appendChild(label);
             }
         }

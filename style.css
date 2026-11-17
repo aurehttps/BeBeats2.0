@@ -1354,3 +1354,11 @@ body footer div:hover {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
+
+.succes-xp-bonus {
+    margin: 0.75rem 0 0;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    color: var(--bebeats-text-muted);
+    font-style: italic;
+}

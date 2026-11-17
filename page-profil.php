@@ -45,9 +45,9 @@ if (empty($profile_photo)) {
 $badge = ($user_type === 'artiste') ? 'Artiste' : 'Fan';
 $selected_badge_key = get_user_meta($viewed_user_id, 'bebeats_selected_badge', true);
 if (!empty($selected_badge_key)) {
-    $badge_catalog = bebeats_get_badge_catalog();
-    if (isset($badge_catalog[$selected_badge_key])) {
-        $badge = $badge_catalog[$selected_badge_key]['title'];
+    $title_catalog = bebeats_get_title_catalog();
+    if (isset($title_catalog[$selected_badge_key])) {
+        $badge = $title_catalog[$selected_badge_key]['display'];
     }
 }
 

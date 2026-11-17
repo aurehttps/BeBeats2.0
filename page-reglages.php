@@ -124,6 +124,17 @@ if (is_user_logged_in()) {
                 </div>
                 
                 <div class="setting-item">
+                    <label class="setting-label">Thème</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-theme" class="toggle-input">
+                        <span class="toggle-slider">
+                            <span class="toggle-checkmark">&#10003;</span>
+                            <span class="toggle-knob"></span>
+                        </span>
+                    </label>
+                </div>
+                
+                <div class="setting-item">
                     <label class="setting-label">Mode</label>
                     <label class="toggle-switch">
                         <input type="checkbox" id="toggle-mode" class="toggle-input">

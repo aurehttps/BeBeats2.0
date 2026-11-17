@@ -15,6 +15,9 @@
                 document.documentElement.classList.add('mode-violet');
                 document.documentElement.classList.remove('mode-orange');
             }
+            if (localStorage.getItem('bebeats-theme') === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
         })();
     </script>
 </head>

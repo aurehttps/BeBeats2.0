@@ -19,7 +19,8 @@ function bebeats_enqueue_styles() {
     wp_enqueue_style('bebeats-style', get_stylesheet_uri(), array('bootstrap-css', 'bebeats-fonts'), '1.0');
     
     // Enqueue page-specific styles
-    if (is_page('connexion') || is_page('inscription') || is_page('welcome') || 
+    if (is_page('connexion') || is_page('inscription') || is_page('welcome') ||
+        is_page('mot-de-passe-oublie') || is_page('reinitialiser-mot-de-passe') || 
         is_page('inscription-fan-step1') || 
         is_page('inscription-fan-step2') || is_page('inscription-fan-step3') || 
         is_page('inscription-fan-step4') ||
@@ -436,7 +437,9 @@ function bebeats_create_default_pages() {
         'resultats'                    => 'Resultats Page',
         'reglages'                     => 'Reglages Page',
         'profil'                       => 'Profil Page',
-        'welcome'                      => 'Welcome Page'
+        'welcome'                      => 'Welcome Page',
+        'mot-de-passe-oublie'          => 'Mot de passe oublie',
+        'reinitialiser-mot-de-passe'   => 'Reinitialiser mot de passe'
     );
 
     $template_files = array(
@@ -459,7 +462,9 @@ function bebeats_create_default_pages() {
         'resultats'                  => 'page-resultats.php',
         'reglages'                   => 'page-reglages.php',
         'profil'                     => 'page-profil.php',
-        'welcome'                    => 'page-welcome.php'
+        'welcome'                    => 'page-welcome.php',
+        'mot-de-passe-oublie'        => 'page-mot-de-passe-oublie.php',
+        'reinitialiser-mot-de-passe' => 'page-reinitialiser-mot-de-passe.php'
     );
 
     foreach ($pages as $slug => $title) {
@@ -700,6 +705,176 @@ function bebeats_ajax_mark_notifications_read() {
     wp_send_json_success(array('unread' => 0));
 }
 add_action('wp_ajax_bebeats_mark_notifications_read', 'bebeats_ajax_mark_notifications_read');
+
+/**
+ * Mise a jour du compte : pseudo visible + mot de passe
+ */
+function bebeats_handle_update_account() {
+    if (!is_user_logged_in()) {
+        wp_redirect(home_url('/auth-start'));
+        exit;
+    }
+    
+    if (!isset($_POST['bebeats_update_account_nonce']) || !wp_verify_nonce($_POST['bebeats_update_account_nonce'], 'bebeats_update_account_action')) {
+        wp_redirect(home_url('/reglages?account_error=1'));
+        exit;
+    }
+    
+    $current_user = wp_get_current_user();
+    $user_id = $current_user->ID;
+    
+    // --- Pseudo visible ---
+    $display_name = isset($_POST['display_name']) ? sanitize_text_field($_POST['display_name']) : '';
+    if (!empty($display_name) && $display_name !== $current_user->display_name) {
+        if (mb_strlen($display_name) < 2 || mb_strlen($display_name) > 40) {
+            wp_redirect(home_url('/reglages?account_error=pseudo'));
+            exit;
+        }
+        $update = wp_update_user(array(
+            'ID'           => $user_id,
+            'display_name' => $display_name
+        ));
+        if (is_wp_error($update)) {
+            wp_redirect(home_url('/reglages?account_error=1'));
+            exit;
+        }
+    }
+    
+    // --- Changement de mot de passe (optionnel) ---
+    $current_password = isset($_POST['current_password']) ? $_POST['current_password'] : '';
+    $new_password = isset($_POST['new_password']) ? $_POST['new_password'] : '';
+    $confirm_password = isset($_POST['confirm_password']) ? $_POST['confirm_password'] : '';
+    
+    if (!empty($new_password) || !empty($current_password)) {
+        if (empty($current_password) || !wp_check_password($current_password, $current_user->user_pass, $user_id)) {
+            wp_redirect(home_url('/reglages?account_error=current'));
+            exit;
+        }
+        
+        if (strlen($new_password) < 8) {
+            wp_redirect(home_url('/reglages?account_error=length'));
+            exit;
+        }
+        
+        if ($new_password !== $confirm_password) {
+            wp_redirect(home_url('/reglages?account_error=confirm'));
+            exit;
+        }
+        
+        wp_set_password($new_password, $user_id);
+        
+        // wp_set_password deconnecte toutes les sessions : reconnexion immediate
+        wp_set_current_user($user_id);
+        wp_set_auth_cookie($user_id, true);
+    }
+    
+    wp_redirect(home_url('/reglages?account_success=1'));
+    exit;
+}
+add_action('admin_post_bebeats_update_account', 'bebeats_handle_update_account');
+
+/**
+ * Mot de passe oublie : envoi du mail de reinitialisation
+ */
+function bebeats_handle_forgot_password() {
+    if (!isset($_POST['bebeats_forgot_password_nonce']) || !wp_verify_nonce($_POST['bebeats_forgot_password_nonce'], 'bebeats_forgot_password_action')) {
+        wp_redirect(home_url('/mot-de-passe-oublie?forgot_error=1'));
+        exit;
+    }
+    
+    $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+    
+    if (empty($email)) {
+        wp_redirect(home_url('/mot-de-passe-oublie?forgot_error=empty'));
+        exit;
+    }
+    
+    $user = get_user_by('email', $email);
+    
+    // Toujours le meme message : ne pas reveler si l'email existe
+    if ($user) {
+        $key = wp_generate_password(32, false);
+        
+        update_user_meta($user->ID, 'bebeats_reset_key_hash', wp_hash_password($key));
+        update_user_meta($user->ID, 'bebeats_reset_key_time', time());
+        
+        $reset_url = add_query_arg(
+            array(
+                'login' => urlencode($user->user_login),
+                'key'   => urlencode($key)
+            ),
+            home_url('/reinitialiser-mot-de-passe')
+        );
+        
+        $subject = 'Reinitialisation de ton mot de passe BeBeats';
+        $message = "Bonjour " . ($user->display_name ?: $user->user_login) . ",\n\n"
+                 . "Quelqu'un (toi, on l'espere) a demande la reinitialisation de ton mot de passe BeBeats.\n\n"
+                 . "Clique sur ce lien pour choisir un nouveau mot de passe (valide 1 heure) :\n"
+                 . $reset_url . "\n\n"
+                 . "Si tu n'es pas a l'origine de cette demande, ignore simplement ce mail.\n\n"
+                 . "L'equipe BeBeats";
+        
+        wp_mail($user->user_email, $subject, $message);
+    }
+    
+    wp_redirect(home_url('/mot-de-passe-oublie?forgot_sent=1'));
+    exit;
+}
+add_action('admin_post_bebeats_forgot_password', 'bebeats_handle_forgot_password');
+add_action('admin_post_nopriv_bebeats_forgot_password', 'bebeats_handle_forgot_password');
+
+/**
+ * Mot de passe oublie : definition du nouveau mot de passe
+ */
+function bebeats_handle_reset_password() {
+    if (!isset($_POST['bebeats_reset_password_nonce']) || !wp_verify_nonce($_POST['bebeats_reset_password_nonce'], 'bebeats_reset_password_action')) {
+        wp_redirect(home_url('/mot-de-passe-oublie?forgot_error=1'));
+        exit;
+    }
+    
+    $login = isset($_POST['login']) ? sanitize_user($_POST['login']) : '';
+    $key = isset($_POST['key']) ? sanitize_text_field($_POST['key']) : '';
+    $new_password = isset($_POST['new_password']) ? $_POST['new_password'] : '';
+    $confirm_password = isset($_POST['confirm_password']) ? $_POST['confirm_password'] : '';
+    
+    $user = !empty($login) ? get_user_by('login', $login) : false;
+    
+    if (!$user || empty($key)) {
+        wp_redirect(home_url('/mot-de-passe-oublie?forgot_error=invalid'));
+        exit;
+    }
+    
+    $key_hash = get_user_meta($user->ID, 'bebeats_reset_key_hash', true);
+    $key_time = (int) get_user_meta($user->ID, 'bebeats_reset_key_time', true);
+    
+    // Cle expiree apres 1 heure
+    if (empty($key_hash) || (time() - $key_time) > 3600 || !wp_check_password($key, $key_hash, $user->ID)) {
+        delete_user_meta($user->ID, 'bebeats_reset_key_hash');
+        delete_user_meta($user->ID, 'bebeats_reset_key_time');
+        wp_redirect(home_url('/mot-de-passe-oublie?forgot_error=expired'));
+        exit;
+    }
+    
+    if (strlen($new_password) < 8) {
+        wp_redirect(home_url('/reinitialiser-mot-de-passe?login=' . urlencode($login) . '&key=' . urlencode($key) . '&reset_error=length'));
+        exit;
+    }
+    
+    if ($new_password !== $confirm_password) {
+        wp_redirect(home_url('/reinitialiser-mot-de-passe?login=' . urlencode($login) . '&key=' . urlencode($key) . '&reset_error=confirm'));
+        exit;
+    }
+    
+    wp_set_password($new_password, $user->ID);
+    
+    delete_user_meta($user->ID, 'bebeats_reset_key_hash');
+    delete_user_meta($user->ID, 'bebeats_reset_key_time');
+    
+    wp_redirect(home_url('/connexion?reset_success=1'));
+    exit;
+}
+add_action('admin_post_bebeats_reset_password', 'bebeats_handle_reset_password');
+add_action('admin_post_nopriv_bebeats_reset_password', 'bebeats_handle_reset_password');
 
 add_action('after_switch_theme', 'bebeats_create_registration_table');
 add_action('after_switch_theme', 'bebeats_create_posts_table');

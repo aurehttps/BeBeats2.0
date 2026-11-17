@@ -628,3 +628,34 @@ body.mode-orange .welcome-btn:hover {
         height: 80px;
     }
 }
+
+/* Message de succes (reset mot de passe, etc.) */
+.auth-success-message {
+    background: rgba(63, 160, 63, 0.15);
+    border: 1px solid rgba(63, 160, 63, 0.5);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.875rem;
+    color: #6fcf6f;
+    text-align: center;
+}
+
+/* Lien secondaire sous le formulaire */
+.auth-alt-link {
+    margin-top: 1.25rem;
+    text-align: center;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.875rem;
+}
+
+.auth-alt-link a {
+    color: var(--bebeats-accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.auth-alt-link a:hover {
+    text-decoration: underline;
+}

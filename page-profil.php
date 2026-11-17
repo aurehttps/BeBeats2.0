@@ -16,20 +16,50 @@ get_header();
 $server_timestamp = current_time('timestamp');
 $current_user = wp_get_current_user();
 $current_user_id = is_user_logged_in() ? get_current_user_id() : 0;
-$user_type = get_user_meta($current_user->ID, 'bebeats_user_type', true);
-$profile_photo = get_user_meta($current_user->ID, 'bebeats_profile_photo', true);
-$banner = get_user_meta($current_user->ID, 'bebeats_banner', true);
-$description = get_user_meta($current_user->ID, 'description', true);
-$genres = get_user_meta($current_user->ID, 'bebeats_genres', true);
-$sounds = get_user_meta($current_user->ID, 'bebeats_sounds', true);
+
+// Profil consulté : l'utilisateur courant par défaut, ?user=ID pour un autre profil
+$viewed_user_id = $current_user_id;
+if (isset($_GET['user'])) {
+    $requested_id = intval($_GET['user']);
+    if ($requested_id > 0 && get_userdata($requested_id)) {
+        $viewed_user_id = $requested_id;
+    }
+}
+$is_own_profile = ($viewed_user_id === $current_user_id);
+
+$profile_user = get_userdata($viewed_user_id);
+$user_type = get_user_meta($viewed_user_id, 'bebeats_user_type', true);
+$profile_photo = get_user_meta($viewed_user_id, 'bebeats_profile_photo', true);
+$banner = get_user_meta($viewed_user_id, 'bebeats_banner', true);
+$description = get_user_meta($viewed_user_id, 'description', true);
+$genres = get_user_meta($viewed_user_id, 'bebeats_genres', true);
+$sounds = get_user_meta($viewed_user_id, 'bebeats_sounds', true);
 
 // Si pas de photo de profil, utiliser l'avatar WordPress par défaut
 if (empty($profile_photo)) {
-    $profile_photo = get_avatar_url($current_user->ID, array('size' => 200));
+    $profile_photo = get_avatar_url($viewed_user_id, array('size' => 200));
 }
 
 // Déterminer le badge selon le type d'utilisateur
-$badge = ($user_type === 'artiste') ? 'Artiste' : 'Super Admin';
+$badge = ($user_type === 'artiste') ? 'Artiste' : 'Fan';
+
+// Suivi : état et compteur (uniquement pour un artiste)
+$followers_count = 0;
+$is_following = false;
+if ($user_type === 'artiste') {
+    global $wpdb;
+    $follows_table = $wpdb->prefix . 'bebeats_follows';
+    $followers_count = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $follows_table WHERE artist_id = %d",
+        $viewed_user_id
+    ));
+    if (!$is_own_profile) {
+        $is_following = (bool) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $follows_table WHERE artist_id = %d AND follower_id = %d",
+            $viewed_user_id, $current_user_id
+        ));
+    }
+}
 
 // Formater les genres pour l'affichage
 $genres_display = '';
@@ -48,14 +78,25 @@ if (!empty($genres) && is_array($genres)) {
             
             <!-- Photo de profil en bas à droite -->
             <div class="profile-photo-container">
-                <img src="<?php echo esc_url($profile_photo); ?>" alt="<?php echo esc_attr($current_user->display_name); ?>" class="profile-photo">
+                <img src="<?php echo esc_url($profile_photo); ?>" alt="<?php echo esc_attr($profile_user->display_name); ?>" class="profile-photo">
             </div>
             
-            <!-- Titre "Super Admin" au-dessus de la photo -->
+            <!-- Badge du type de compte au-dessus de la photo -->
             <div class="profile-badge-title"><?php echo esc_html($badge); ?></div>
             
             <!-- Pseudo à gauche de la photo, aligné avec le titre -->
-            <h1 class="profile-username"><?php echo esc_html($current_user->display_name ?: $current_user->user_login); ?></h1>
+            <h1 class="profile-username"><?php echo esc_html($profile_user->display_name ?: $profile_user->user_login); ?></h1>
+            
+            <?php if ($user_type === 'artiste'): ?>
+                <div class="profile-follow-zone">
+                    <span class="bebeats-followers-count"><?php echo esc_html($followers_count); ?> <?php echo $followers_count > 1 ? 'abonnés' : 'abonné'; ?></span>
+                    <?php if (!$is_own_profile): ?>
+                        <button class="bebeats-follow-btn <?php echo $is_following ? 'is-following' : ''; ?>" data-artist-id="<?php echo esc_attr($viewed_user_id); ?>" type="button">
+                            <span class="follow-label"><?php echo $is_following ? 'Suivi' : 'Suivre'; ?></span>
+                        </button>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
             
             <!-- Description en dessous du pseudo, alignée avec la photo -->
             <?php if (!empty($description)): ?>
@@ -75,14 +116,14 @@ if (!empty($genres) && is_array($genres)) {
             // Récupérer les posts de l'utilisateur
             $user_posts = $wpdb->get_results($wpdb->prepare(
                 "SELECT * FROM $posts_table WHERE user_id = %d ORDER BY created_at DESC LIMIT 20",
-                $current_user->ID
+                $viewed_user_id
             ));
             
             $stats_map = bebeats_get_reactions_stats(wp_list_pluck($user_posts, 'id'), $current_user_id);
             
             if (!empty($user_posts)): ?>
                 <div class="profile-section glassmorphism">
-                    <h2 class="section-title">Mes publications</h2>
+                    <h2 class="section-title"><?php echo $is_own_profile ? 'Mes publications' : 'Publications'; ?></h2>
                     <div class="profile-posts-list">
                         <?php foreach ($user_posts as $post): 
                             $stats = isset($stats_map[$post->id]) ? $stats_map[$post->id] : array('likes_count' => 0, 'reposts_count' => 0, 'comments_count' => 0, 'user_liked' => false, 'user_favorited' => false, 'user_reposted' => false);
@@ -352,7 +393,7 @@ if (!empty($genres) && is_array($genres)) {
                  WHERE p.user_id = %d AND p.post_type = 'fan-art'
                  ORDER BY p.created_at DESC
                  LIMIT 20",
-                $current_user->ID
+                $viewed_user_id
             ));
             
             if (!empty($user_fanart_posts)): ?>
@@ -391,7 +432,7 @@ if (!empty($genres) && is_array($genres)) {
                  WHERE p.user_id = %d AND p.post_type = 'audio'
                  ORDER BY p.created_at DESC
                  LIMIT 20",
-                $current_user->ID
+                $viewed_user_id
             ));
             
             if (!empty($user_audio_posts)): ?>
@@ -430,7 +471,7 @@ if (!empty($genres) && is_array($genres)) {
                  WHERE p.user_id = %d AND p.post_type = 'post'
                  ORDER BY p.created_at DESC
                  LIMIT 20",
-                $current_user->ID
+                $viewed_user_id
             ));
             $carousel_stats = bebeats_get_reactions_stats(array_merge(
                 wp_list_pluck($user_fanart_posts, 'id'),

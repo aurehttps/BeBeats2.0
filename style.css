@@ -940,3 +940,129 @@ body footer div:hover {
         border-radius: 75px !important;
     }
 }
+
+/* ============================================================
+   Suivi d'artistes + notifications
+   ============================================================ */
+
+.profile-follow-zone {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.75rem 0;
+}
+
+.bebeats-followers-count {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.875rem;
+    color: var(--bebeats-text-muted);
+}
+
+.bebeats-follow-btn {
+    padding: 0.5rem 1.75rem;
+    border: 1px solid var(--bebeats-border);
+    border-radius: 90px;
+    background: var(--bebeats-accent);
+    color: #fff;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.bebeats-follow-btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+.bebeats-follow-btn.is-following {
+    background: var(--bebeats-surface-2);
+    color: var(--bebeats-text);
+}
+
+.bebeats-follow-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.notification-btn {
+    position: relative;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--bebeats-pumpkin);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.bebeats-notifications-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0.75rem;
+    z-index: 2000;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.notifications-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.notification-item a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--bebeats-text);
+    transition: background 0.2s ease;
+}
+
+.notification-item a:hover {
+    background: var(--bebeats-surface-2);
+}
+
+.notification-item.is-unread a {
+    background: var(--bebeats-surface-2);
+}
+
+.notification-item.is-unread .notification-message {
+    font-weight: 700;
+}
+
+.notification-message {
+    font-size: 0.85rem;
+    font-family: 'URW Form', sans-serif;
+}
+
+.notification-time {
+    font-size: 0.7rem;
+    color: var(--bebeats-text-muted);
+}
+
+.notifications-empty,
+.notifications-loading {
+    margin: 0;
+    padding: 1rem 0.5rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--bebeats-text-muted);
+    font-family: 'URW Form', sans-serif;
+}

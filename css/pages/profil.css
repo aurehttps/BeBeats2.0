@@ -74,9 +74,6 @@
 }
 /* Pseudo à gauche de la photo, aligné avec le titre */
 .profile-username {
-    position: absolute;
-    bottom: calc(0.5rem + 160px + 0.75rem);
-    left: 2rem;
     font-family: 'Brevia', sans-serif;
     font-size: 1.5rem;
     font-weight: 700;
@@ -93,10 +90,7 @@
 }
 /* Description en dessous du pseudo, alignée avec la photo */
 .profile-description {
-    position: absolute;
-    bottom: 0.5rem;
-    left: 2rem;
-    right: calc(2rem + 160px + 2rem);
+    position: relative;
     font-family: 'URW Form', sans-serif;
     font-size: 1rem;
     color: var(--bebeats-text);
@@ -207,14 +201,9 @@
         font-size: 0.9rem;
     }
     .profile-username {
-        bottom: calc(0.5rem + 120px + 0.75rem);
-        left: 1.5rem;
         font-size: 1.25rem;
-        max-width: 300px;
     }
     .profile-description {
-        left: 1.5rem;
-        right: calc(1.5rem + 120px + 1.5rem);
         font-size: 0.9rem;
     }
     .sounds-grid {
@@ -245,11 +234,7 @@
         padding: 0.25rem 0.5rem;
     }
     .profile-username {
-        bottom: calc(0.5rem + 100px + 0.5rem);
-        left: 1rem;
         font-size: 1.125rem;
-        max-width: calc(100% - 2rem - 100px - 1rem);
-        padding: 0.5rem 0.75rem;
     }
     .profile-description {
         left: 1rem;

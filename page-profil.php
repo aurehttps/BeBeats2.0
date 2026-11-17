@@ -43,21 +43,34 @@ if (empty($profile_photo)) {
 // Déterminer le badge selon le type d'utilisateur
 $badge = ($user_type === 'artiste') ? 'Artiste' : 'Fan';
 
-// Suivi : état et compteur (uniquement pour un artiste)
-$followers_count = 0;
+// Suivi : compteurs et état
+global $wpdb;
+$follows_table = $wpdb->prefix . 'bebeats_follows';
+$posts_table = $wpdb->prefix . 'bebeats_posts';
+
+$followers_count = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM $follows_table WHERE artist_id = %d",
+    $viewed_user_id
+));
+$following_count = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM $follows_table WHERE follower_id = %d",
+    $viewed_user_id
+));
+$posts_count = (int) $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM $posts_table WHERE user_id = %d",
+    $viewed_user_id
+));
+
 $is_following = false;
-if ($user_type === 'artiste') {
-    global $wpdb;
-    $follows_table = $wpdb->prefix . 'bebeats_follows';
-    $followers_count = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $follows_table WHERE artist_id = %d",
-        $viewed_user_id
+$is_notify_on = false;
+if (!$is_own_profile && $user_type === 'artiste') {
+    $follow_row = $wpdb->get_row($wpdb->prepare(
+        "SELECT notify FROM $follows_table WHERE artist_id = %d AND follower_id = %d",
+        $viewed_user_id, $current_user_id
     ));
-    if (!$is_own_profile) {
-        $is_following = (bool) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $follows_table WHERE artist_id = %d AND follower_id = %d",
-            $viewed_user_id, $current_user_id
-        ));
+    if ($follow_row) {
+        $is_following = true;
+        $is_notify_on = (bool) $follow_row->notify;
     }
 }
 
@@ -81,27 +94,42 @@ if (!empty($genres) && is_array($genres)) {
                 <img src="<?php echo esc_url($profile_photo); ?>" alt="<?php echo esc_attr($profile_user->display_name); ?>" class="profile-photo">
             </div>
             
-            <!-- Badge du type de compte au-dessus de la photo -->
-            <div class="profile-badge-title"><?php echo esc_html($badge); ?></div>
-            
-            <!-- Pseudo à gauche de la photo, aligné avec le titre -->
-            <h1 class="profile-username"><?php echo esc_html($profile_user->display_name ?: $profile_user->user_login); ?></h1>
-            
-            <?php if ($user_type === 'artiste'): ?>
-                <div class="profile-follow-zone">
-                    <span class="bebeats-followers-count"><?php echo esc_html($followers_count); ?> <?php echo $followers_count > 1 ? 'abonnés' : 'abonné'; ?></span>
-                    <?php if (!$is_own_profile): ?>
+            <!-- Colonne d'infos utilisateur : pseudo, stats, actions, description -->
+            <div class="profile-user-info">
+                <h1 class="profile-username"><?php echo esc_html($profile_user->display_name ?: $profile_user->user_login); ?></h1>
+                
+                <div class="profile-stats-row">
+                    <span class="profile-stat">
+                        <span class="profile-stat-value"><?php echo esc_html($followers_count); ?></span>
+                        <span class="profile-stat-label">abonné<?php echo $followers_count > 1 ? 's' : ''; ?></span>
+                    </span>
+                    <span class="profile-stat">
+                        <span class="profile-stat-value"><?php echo esc_html($following_count); ?></span>
+                        <span class="profile-stat-label">abonnement<?php echo $following_count > 1 ? 's' : ''; ?></span>
+                    </span>
+                    <span class="profile-stat">
+                        <span class="profile-stat-value"><?php echo esc_html($posts_count); ?></span>
+                        <span class="profile-stat-label">publication<?php echo $posts_count > 1 ? 's' : ''; ?></span>
+                    </span>
+                </div>
+                
+                <?php if (!$is_own_profile && $user_type === 'artiste'): ?>
+                    <div class="profile-actions-row">
                         <button class="bebeats-follow-btn <?php echo $is_following ? 'is-following' : ''; ?>" data-artist-id="<?php echo esc_attr($viewed_user_id); ?>" type="button">
                             <span class="follow-label"><?php echo $is_following ? 'Suivi' : 'Suivre'; ?></span>
                         </button>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
-            
-            <!-- Description en dessous du pseudo, alignée avec la photo -->
-            <?php if (!empty($description)): ?>
-                <p class="profile-description"><?php echo esc_html($description); ?></p>
-            <?php endif; ?>
+                        <button class="bebeats-notify-btn <?php echo $is_following ? '' : 'is-hidden'; ?> <?php echo $is_notify_on ? 'is-active' : ''; ?>" data-artist-id="<?php echo esc_attr($viewed_user_id); ?>" type="button" aria-label="Activer ou désactiver les notifications">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                            </svg>
+                        </button>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($description)): ?>
+                    <p class="profile-description"><?php echo esc_html($description); ?></p>
+                <?php endif; ?>
+            </div>
         </div>
 
         <!-- Contenu principal -->

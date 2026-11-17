@@ -400,6 +400,76 @@ function bebeats_create_registration_table() {
 }
 
 // Créer la table à l'activation du thème
+/**
+ * Creer automatiquement les pages du theme (slug + modele) a l'activation,
+ * uniquement si elles n'existent pas deja.
+ */
+function bebeats_create_default_pages() {
+    $pages = array(
+        'connexion'                    => 'Connexion Page',
+        'inscription'                  => 'Inscription Page',
+        'auth-start'                   => 'Auth Start Page',
+        'inscription-fan-step1'        => 'Inscription Fan - Etape 1',
+        'inscription-fan-step2'        => 'Inscription Fan - Etape 2',
+        'inscription-fan-step3'        => 'Inscription Fan - Etape 3',
+        'inscription-fan-step4'        => 'Inscription Fan - Etape 4',
+        'inscription-artiste-step1'   => 'Inscription Artiste - Etape 1',
+        'inscription-artiste-step2'   => 'Inscription Artiste - Etape 2',
+        'inscription-artiste-step3'   => 'Inscription Artiste - Etape 3',
+        'inscription-artiste-step4'   => 'Inscription Artiste - Etape 4',
+        'inscription-artiste-step5'   => 'Inscription Artiste - Etape 5',
+        'feed-page'                    => 'Feed Page',
+        'event'                        => 'Event Page',
+        'contribuer'                   => 'Contribuer Page',
+        'recherche'                    => 'Recherche Page',
+        'resultats'                    => 'Resultats Page',
+        'reglages'                     => 'Reglages Page',
+        'profil'                       => 'Profil Page',
+        'welcome'                      => 'Welcome Page'
+    );
+
+    $template_files = array(
+        'connexion'                  => 'page-connexion.php',
+        'inscription'                => 'page-inscription.php',
+        'auth-start'                 => 'page-auth-start.php',
+        'inscription-fan-step1'      => 'page-inscription-fan-step1.php',
+        'inscription-fan-step2'      => 'page-inscription-fan-step2.php',
+        'inscription-fan-step3'      => 'page-inscription-fan-step3.php',
+        'inscription-fan-step4'      => 'page-inscription-fan-step4.php',
+        'inscription-artiste-step1' => 'page-inscription-artiste-step1.php',
+        'inscription-artiste-step2' => 'page-inscription-artiste-step2.php',
+        'inscription-artiste-step3' => 'page-inscription-artiste-step3.php',
+        'inscription-artiste-step4' => 'page-inscription-artiste-step4.php',
+        'inscription-artiste-step5' => 'page-inscription-artiste-step5.php',
+        'feed-page'                  => 'page-feed.php',
+        'event'                      => 'page-event.php',
+        'contribuer'                 => 'page-contribuer.php',
+        'recherche'                  => 'page-recherche.php',
+        'resultats'                  => 'page-resultats.php',
+        'reglages'                   => 'page-reglages.php',
+        'profil'                     => 'page-profil.php',
+        'welcome'                    => 'page-welcome.php'
+    );
+
+    foreach ($pages as $slug => $title) {
+        if (get_page_by_path($slug) === null) {
+            $page_id = wp_insert_post(array(
+                'post_title'   => ucfirst($slug),
+                'post_name'    => $slug,
+                'post_status'  => 'publish',
+                'post_type'    => 'page'
+            ));
+
+            if ($page_id && !is_wp_error($page_id) && isset($template_files[$slug])) {
+                update_post_meta($page_id, '_wp_page_template', $template_files[$slug]);
+            }
+        }
+    }
+
+    flush_rewrite_rules();
+}
+add_action('after_switch_theme', 'bebeats_create_default_pages');
+
 add_action('after_switch_theme', 'bebeats_create_registration_table');
 add_action('after_switch_theme', 'bebeats_create_posts_table');
 add_action('after_switch_theme', 'bebeats_create_post_reactions_table');

@@ -828,3 +828,274 @@ html.mode-orange .carousel-post-action-btn.active .carousel-action-icon {
     vertical-align: middle;
     white-space: nowrap;
 }
+
+/* ============================================================
+   Grille unifiee des publications du profil
+   ============================================================ */
+
+.profile-posts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.profile-posts-header .section-title {
+    margin-bottom: 0;
+}
+
+.profile-view-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.profile-view-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1rem;
+    background: var(--bebeats-surface-2);
+    border: 1px solid var(--bebeats-border);
+    border-radius: 90px;
+    color: var(--bebeats-text-muted);
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-view-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.profile-view-btn.is-active {
+    background: var(--bebeats-accent);
+    border-color: var(--bebeats-accent);
+    color: #fff;
+}
+
+.profile-unified-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+}
+
+.profile-unified-grid.is-detail {
+    grid-template-columns: 1fr;
+}
+
+/* --- Vue compacte --- */
+.profile-card-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.profile-card-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bebeats-surface-2);
+}
+
+.profile-card-media img,
+.profile-card-media video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-card-media-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.profile-card-media-text p {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.85rem;
+    color: var(--bebeats-text-muted);
+    text-align: center;
+}
+
+.profile-card-audio-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 100%;
+    color: var(--bebeats-accent);
+}
+
+.profile-card-audio-placeholder svg {
+    width: 40px;
+    height: 40px;
+}
+
+.profile-card-audio-placeholder span {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    color: var(--bebeats-text-muted);
+}
+
+.profile-card-media-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 90px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.65rem;
+}
+
+.profile-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.profile-card-type {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bebeats-accent);
+}
+
+.profile-card-time {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.7rem;
+    color: var(--bebeats-text-muted);
+}
+
+/* En vue detaillee : compact masque, detail visible */
+.profile-card-full {
+    display: none;
+}
+
+.profile-unified-grid.is-detail .profile-card-compact {
+    display: none;
+}
+
+.profile-unified-grid.is-detail .profile-card-full {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.profile-card-full-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--bebeats-border);
+}
+
+.profile-card-full-text {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--bebeats-text);
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.profile-card-full-media img,
+.profile-card-full-media video {
+    width: 100%;
+    max-height: 480px;
+    object-fit: contain;
+    border-radius: 12px;
+    background: var(--bebeats-surface-2);
+}
+
+.profile-card-full-media audio {
+    width: 100%;
+}
+
+.profile-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding-top: 0.25rem;
+}
+
+.profile-card-comments {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bebeats-border);
+}
+
+.profile-comment {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.profile-comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.profile-comment-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.profile-comment-author {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--bebeats-text);
+}
+
+.profile-comment-text {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    color: var(--bebeats-text-muted);
+    margin: 0;
+}
+
+.profile-posts-limit {
+    margin-top: 1rem;
+    text-align: center;
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    color: var(--bebeats-text-muted);
+}
+
+@media (max-width: 1024px) {
+    .profile-unified-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-unified-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .profile-card-actions {
+        gap: 0.75rem;
+    }
+}

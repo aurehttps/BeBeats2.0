@@ -255,3 +255,52 @@ function handleProfileReaction(postId, reactionType, button) {
 }
 
 
+
+/**
+ * Grille unifiee du profil : bascule grille 4 colonnes <-> vue detaillee
+ */
+function initProfileGrid() {
+    const grid = document.getElementById('profile-unified-grid');
+    const gridBtn = document.getElementById('view-grid-btn');
+    const detailBtn = document.getElementById('view-detail-btn');
+
+    if (!grid || !gridBtn || !detailBtn) return;
+
+    function setView(isDetail) {
+        grid.classList.toggle('is-detail', isDetail);
+        gridBtn.classList.toggle('is-active', !isDetail);
+        detailBtn.classList.toggle('is-active', isDetail);
+        gridBtn.setAttribute('aria-pressed', String(!isDetail));
+        detailBtn.setAttribute('aria-pressed', String(isDetail));
+    }
+
+    gridBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setView(false);
+    });
+
+    detailBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setView(true);
+    });
+
+    // En mode grille, cliquer un post passe en vue detaillee
+    grid.querySelectorAll('.profile-grid-card').forEach(function (card) {
+        const compact = card.querySelector('.profile-card-compact');
+        if (!compact) return;
+
+        compact.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (!grid.classList.contains('is-detail')) {
+                setView(true);
+                setTimeout(function () {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    initProfileGrid();
+});

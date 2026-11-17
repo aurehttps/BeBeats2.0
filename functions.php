@@ -501,12 +501,22 @@ function bebeats_create_follows_table() {
         id bigint(20) NOT NULL AUTO_INCREMENT,
         follower_id bigint(20) NOT NULL,
         artist_id bigint(20) NOT NULL,
+        notify tinyint(1) DEFAULT 1,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         UNIQUE KEY unique_follow (follower_id, artist_id),
         KEY artist_id (artist_id)
     ) $charset_collate;";
     dbDelta($sql);
+    
+    // Migration : ajouter la colonne notify sur les installations existantes
+    $column_exists = $wpdb->get_results($wpdb->prepare(
+        "SHOW COLUMNS FROM $table_name LIKE %s",
+        'notify'
+    ));
+    if (empty($column_exists)) {
+        $wpdb->query("ALTER TABLE $table_name ADD COLUMN notify tinyint(1) DEFAULT 1 AFTER artist_id");
+    }
 }
 
 function bebeats_create_notifications_table() {
@@ -530,14 +540,11 @@ function bebeats_create_notifications_table() {
     dbDelta($sql);
 }
 
-// Garantir les tables sur une installation ou le theme etait deja actif
+// Garantir les tables (et leurs migrations de colonnes) a chaque chargement :
+// CREATE TABLE IF NOT EXISTS + verifications ALTER sont rapides et idempotentes
 function bebeats_ensure_social_tables() {
-    if (get_option('bebeats_social_tables_ready')) {
-        return;
-    }
     bebeats_create_follows_table();
     bebeats_create_notifications_table();
-    update_option('bebeats_social_tables_ready', 1);
 }
 add_action('init', 'bebeats_ensure_social_tables');
 add_action('after_switch_theme', 'bebeats_create_follows_table');
@@ -597,6 +604,49 @@ function bebeats_ajax_toggle_follow() {
 add_action('wp_ajax_bebeats_toggle_follow', 'bebeats_ajax_toggle_follow');
 
 /**
+ * Activer / desactiver les notifications d'un artiste suivi (AJAX)
+ */
+function bebeats_ajax_toggle_follow_notifications() {
+    if (!is_user_logged_in()) {
+        wp_send_json_error(array('message' => 'Connexion requise'));
+    }
+    
+    check_ajax_referer('bebeats_follow_action', 'nonce');
+    
+    $current_user_id = get_current_user_id();
+    $artist_id = isset($_POST['artist_id']) ? intval($_POST['artist_id']) : 0;
+    
+    if ($artist_id <= 0) {
+        wp_send_json_error(array('message' => 'Requete invalide'));
+    }
+    
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'bebeats_follows';
+    
+    $notify_state = $wpdb->get_var($wpdb->prepare(
+        "SELECT notify FROM $table_name WHERE follower_id = %d AND artist_id = %d",
+        $current_user_id, $artist_id
+    ));
+    
+    if ($notify_state === null) {
+        wp_send_json_error(array('message' => 'Tu ne suis pas cet artiste'));
+    }
+    
+    $new_state = $notify_state ? 0 : 1;
+    
+    $wpdb->update(
+        $table_name,
+        array('notify' => $new_state),
+        array('follower_id' => $current_user_id, 'artist_id' => $artist_id),
+        array('%d'),
+        array('%d', '%d')
+    );
+    
+    wp_send_json_success(array('notify' => (bool) $new_state));
+}
+add_action('wp_ajax_bebeats_toggle_follow_notifications', 'bebeats_ajax_toggle_follow_notifications');
+
+/**
  * Notifier les followers quand un artiste publie
  */
 function bebeats_notify_followers($artist_id, $post_id) {
@@ -605,7 +655,7 @@ function bebeats_notify_followers($artist_id, $post_id) {
     $notif_table = $wpdb->prefix . 'bebeats_notifications';
     
     $followers = $wpdb->get_col($wpdb->prepare(
-        "SELECT follower_id FROM $follows_table WHERE artist_id = %d LIMIT 500",
+        "SELECT follower_id FROM $follows_table WHERE artist_id = %d AND notify = 1 LIMIT 500",
         $artist_id
     ));
     

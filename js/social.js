@@ -16,6 +16,13 @@ function initFollowButtons() {
             toggleFollow(btn);
         });
     });
+
+    document.querySelectorAll('.bebeats-notify-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            toggleFollowNotifications(btn);
+        });
+    });
 }
 
 function toggleFollow(btn) {
@@ -37,10 +44,22 @@ function toggleFollow(btn) {
             var following = response.data.following;
             btn.classList.toggle('is-following', following);
             btn.querySelector('.follow-label').textContent = following ? 'Suivi' : 'Suivre';
-            var countEl = document.querySelector('.bebeats-followers-count');
-            if (countEl && response.data.followers_count !== undefined) {
-                countEl.textContent = response.data.followers_count + (response.data.followers_count > 1 ? ' abonnés' : ' abonné');
+
+            var statsRow = document.querySelector('.profile-stats-row');
+            if (statsRow && response.data.followers_count !== undefined) {
+                var followerStat = statsRow.querySelector('.profile-stat');
+                if (followerStat) {
+                    followerStat.querySelector('.profile-stat-value').textContent = response.data.followers_count;
+                    followerStat.querySelector('.profile-stat-label').textContent = response.data.followers_count > 1 ? 'abonnés' : 'abonné';
+                }
             }
+
+            var notifyBtn = document.querySelector('.bebeats-notify-btn');
+            if (notifyBtn) {
+                notifyBtn.classList.toggle('is-hidden', !following);
+                notifyBtn.classList.toggle('is-active', following);
+            }
+
             if (following) {
                 var bell = document.querySelector('.notification-btn');
                 if (bell) {
@@ -48,6 +67,29 @@ function toggleFollow(btn) {
                     refreshUnreadBadge();
                 }
             }
+        }
+    }).always(function () {
+        btn.disabled = false;
+    });
+}
+
+function toggleFollowNotifications(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    var artistId = parseInt(btn.getAttribute('data-artist-id'), 10);
+    if (!artistId || typeof bebeatsSocial === 'undefined') {
+        btn.disabled = false;
+        return;
+    }
+
+    jQuery.post(bebeatsSocial.ajaxUrl, {
+        action: 'bebeats_toggle_follow_notifications',
+        nonce: bebeatsSocial.followNonce,
+        artist_id: artistId
+    }).done(function (response) {
+        if (response && response.success) {
+            btn.classList.toggle('is-active', response.data.notify);
         }
     }).always(function () {
         btn.disabled = false;

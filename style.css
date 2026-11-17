@@ -945,21 +945,48 @@ body footer div:hover {
    Suivi d'artistes + notifications
    ============================================================ */
 
-.profile-follow-zone {
+/* Colonne d'infos utilisateur dans la banniere du profil */
+.profile-user-info {
     position: absolute;
-    bottom: calc(0.5rem + 160px - 0.75rem);
+    bottom: 1rem;
     left: 2rem;
+    right: calc(2rem + 160px + 2rem);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    gap: 0.6rem;
     z-index: 5;
 }
 
-.bebeats-followers-count {
+.profile-stats-row {
+    display: flex;
+    align-items: baseline;
+    gap: 1.5rem;
+}
+
+.profile-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+}
+
+.profile-stat-value {
+    font-family: 'Brevia', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--bebeats-text);
+}
+
+.profile-stat-label {
     font-family: 'URW Form', sans-serif;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: var(--bebeats-text-muted);
+}
+
+.profile-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .bebeats-follow-btn {
@@ -989,6 +1016,42 @@ body footer div:hover {
 .bebeats-follow-btn:disabled {
     opacity: 0.6;
     cursor: wait;
+}
+
+/* Bouton notifications d'un artiste suivi (profil) */
+.bebeats-notify-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid var(--bebeats-border);
+    border-radius: 50%;
+    background: var(--bebeats-surface-2);
+    color: var(--bebeats-text-muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.bebeats-notify-btn:hover {
+    border-color: var(--bebeats-accent);
+    color: var(--bebeats-text);
+}
+
+.bebeats-notify-btn.is-active {
+    background: var(--bebeats-accent);
+    border-color: var(--bebeats-accent);
+    color: #fff;
+}
+
+.bebeats-notify-btn.is-hidden {
+    display: none;
+}
+
+.bebeats-notify-btn svg {
+    width: 20px;
+    height: 20px;
 }
 
 .notification-btn {
@@ -1078,14 +1141,31 @@ body footer div:hover {
 }
 
 @media (max-width: 768px) {
-    .profile-follow-zone {
-        bottom: calc(0.5rem + 120px - 0.75rem);
+    .profile-user-info {
         left: 1.5rem;
-        gap: 0.35rem;
+        right: calc(1.5rem + 120px + 1.5rem);
+        gap: 0.45rem;
+    }
+    
+    .profile-stats-row {
+        gap: 1rem;
+    }
+    
+    .profile-stat-value {
+        font-size: 1rem;
+    }
+    
+    .profile-stat-label {
+        font-size: 0.7rem;
     }
     
     .bebeats-follow-btn {
         padding: 0.5rem 1.5rem;
         font-size: 0.9rem;
+    }
+    
+    .bebeats-notify-btn {
+        width: 36px;
+        height: 36px;
     }
 }

@@ -107,13 +107,14 @@
             <span class="nav-label">Accueil</span>
         </a>
         
-        <a href="<?php echo esc_url(home_url('/recherche')); ?>" class="nav-item <?php echo $is_recherche ? 'active' : ''; ?>" aria-label="Saves">
+        <a href="<?php echo esc_url(home_url('/succes')); ?>" class="nav-item <?php echo is_page('succes') ? 'active' : ''; ?>" aria-label="Succès">
             <div class="nav-icon">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 21h8m-4-4v4M7 4h10v6a5 5 0 01-10 0V4z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 6H5a2 2 0 00-2 2c0 1.5 1 3 3.5 3.5M17 6h2a2 2 0 012 2c0 1.5-1 3-3.5 3.5"></path>
                 </svg>
             </div>
-            <span class="nav-label">Saves</span>
+            <span class="nav-label">Succès</span>
         </a>
         
         <a href="<?php echo esc_url(home_url('/contribuer')); ?>" class="nav-item <?php echo $is_contribuer ? 'active' : ''; ?>" aria-label="Contribuer">

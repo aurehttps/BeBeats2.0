@@ -1169,3 +1169,188 @@ body footer div:hover {
         height: 36px;
     }
 }
+
+/* ============================================================
+   Page Succes : XP, badges et titres
+   ============================================================ */
+
+.succes-page {
+    padding: 2rem;
+    padding-top: calc(80px + 2rem);
+    max-width: 1200px;
+    margin: 0 auto;
+    flex: 1;
+}
+
+.succes-title {
+    font-family: 'Brevia', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--bebeats-text);
+    margin-bottom: 2rem;
+}
+
+.succes-xp {
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+}
+
+.succes-xp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.succes-xp-points {
+    font-family: 'Brevia', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--bebeats-text);
+}
+
+.succes-xp-next {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.85rem;
+    color: var(--bebeats-text-muted);
+}
+
+.succes-xp-bar {
+    height: 12px;
+    background: var(--bebeats-surface-2);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.succes-xp-bar-fill {
+    height: 100%;
+    background: var(--bebeats-accent);
+    border-radius: 6px;
+    transition: width 0.4s ease;
+}
+
+.succes-xp-activities {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.succes-xp-activity {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.8rem;
+    color: var(--bebeats-text-muted);
+}
+
+.succes-badges-title {
+    font-family: 'Brevia', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--bebeats-text);
+    margin-bottom: 0.5rem;
+}
+
+.succes-badges-hint {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.875rem;
+    color: var(--bebeats-text-muted);
+    margin-bottom: 1.5rem;
+}
+
+.succes-badges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+}
+
+.succes-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    background: var(--bebeats-surface);
+    border: 1px solid var(--bebeats-border);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.succes-badge.is-unlocked:hover {
+    border-color: var(--bebeats-accent);
+    transform: translateY(-3px);
+}
+
+.succes-badge.is-locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.succes-badge.is-selected {
+    border-color: var(--bebeats-accent);
+    box-shadow: 0 0 0 2px var(--bebeats-accent);
+}
+
+.succes-badge-icon {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--bebeats-surface-2);
+    color: var(--bebeats-text-muted);
+}
+
+.succes-badge.is-unlocked .succes-badge-icon {
+    background: var(--bebeats-accent);
+    color: #fff;
+}
+
+.succes-badge-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.succes-badge-title {
+    font-family: 'Brevia', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--bebeats-text);
+}
+
+.succes-badge-description {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    color: var(--bebeats-text-muted);
+    text-align: center;
+}
+
+.succes-badge-progress {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.75rem;
+    color: var(--bebeats-accent);
+    font-weight: 700;
+}
+
+.succes-badge-selected-label {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.7rem;
+    color: var(--bebeats-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+@media (max-width: 768px) {
+    .succes-page {
+        padding: 1.5rem 1rem;
+        padding-top: calc(80px + 1.5rem);
+    }
+    
+    .succes-badges-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+}

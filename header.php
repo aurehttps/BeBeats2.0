@@ -32,6 +32,7 @@
 
                 <!-- Navigation Section -->
                 <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <a href="<?php echo esc_url(home_url('/qui-sommes-nous')); ?>" class="about-link-header <?php echo is_page('qui-sommes-nous') ? 'active' : ''; ?>">Qui sommes-nous ?</a>
                     <form class="search-container" role="search">
                         <button class="search-icon-button" type="submit" aria-label="Rechercher">
                             <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

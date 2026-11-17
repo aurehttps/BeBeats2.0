@@ -1394,6 +1394,7 @@ body footer div:hover {
 }
 
 .succes-view {
+    padding: 1.5rem 2rem;
     margin-bottom: 1.25rem;
 }
 
@@ -1438,4 +1439,32 @@ body footer div:hover {
     font-family: 'URW Form', sans-serif;
     font-size: 0.8rem;
     color: var(--bebeats-text-muted);
+}
+
+.about-link-header {
+    font-family: 'URW Form', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--bebeats-text);
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--bebeats-border);
+    white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.about-link-header:hover,
+.about-link-header.active {
+    border-color: var(--bebeats-accent);
+    color: var(--bebeats-accent);
+}
+
+html[data-theme="light"] .logo-img {
+    filter: brightness(0);
+}
+
+html[data-theme="light"] .section-title,
+html[data-theme="light"] .content-title {
+    color: var(--bebeats-text);
 }

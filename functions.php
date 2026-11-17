@@ -442,7 +442,8 @@ function bebeats_create_default_pages() {
         'welcome'                      => 'Welcome Page',
         'mot-de-passe-oublie'          => 'Mot de passe oublie',
         'reinitialiser-mot-de-passe'   => 'Reinitialiser mot de passe',
-        'succes'                       => 'Succes Page'
+        'succes'                       => 'Succes Page',
+        'qui-sommes-nous'              => 'Qui sommes-nous ?'
     );
 
     $template_files = array(
@@ -468,7 +469,8 @@ function bebeats_create_default_pages() {
         'welcome'                    => 'page-welcome.php',
         'mot-de-passe-oublie'        => 'page-mot-de-passe-oublie.php',
         'reinitialiser-mot-de-passe' => 'page-reinitialiser-mot-de-passe.php',
-        'succes'                     => 'page-succes.php'
+        'succes'                     => 'page-succes.php',
+        'qui-sommes-nous'            => 'page-qui-sommes-nous.php'
     );
 
     foreach ($pages as $slug => $title) {
@@ -487,8 +489,28 @@ function bebeats_create_default_pages() {
     }
 
     flush_rewrite_rules();
+
+    bebeats_set_feed_as_front_page();
 }
 add_action('after_switch_theme', 'bebeats_create_default_pages');
+
+function bebeats_set_feed_as_front_page() {
+    $feed_page = get_page_by_path('feed-page');
+    if ($feed_page) {
+        update_option('show_on_front', 'page');
+        update_option('page_on_front', $feed_page->ID);
+    }
+}
+
+function bebeats_ensure_default_pages() {
+    if ((int) get_option('bebeats_pages_version') >= 2) {
+        return;
+    }
+
+    bebeats_create_default_pages();
+    update_option('bebeats_pages_version', 2);
+}
+add_action('init', 'bebeats_ensure_default_pages');
 
 /**
  * Suivi d'artistes et notifications
